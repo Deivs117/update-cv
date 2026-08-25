@@ -7,61 +7,25 @@
  *
  * Nunca escribe directamente sobre data/profile.json (sección 7.1: el
  * perfil definitivo solo se guarda tras confirmación explícita del usuario,
- * que en fases futuras ocurrirá desde el editor web /perfil).
+ * que a partir de la Fase 2 ocurre desde el editor web /perfil).
  *
  * Uso:
  *   cd web && npm run extract-profile
  */
 import { config as loadEnv } from "dotenv";
-import { readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { ApiConnector } from "@/lib/claude/api-connector";
 import { ClaudeConnectorError } from "@/lib/claude/connector.interface";
+import { findSeedFiles, PROFILE_DRAFT_PATH, writeDraft } from "@/lib/profile-io";
 
 // El repo guarda .env en la raíz (junto a data/, apps/, etc.), no dentro de web/.
 const REPO_ROOT = path.resolve(__dirname, "..", "..");
 loadEnv({ path: path.join(REPO_ROOT, ".env") });
 
-const RAW_DIR = path.join(REPO_ROOT, "data", "raw");
-const IMAGES_DIR = path.join(RAW_DIR, "images");
-const DRAFT_OUTPUT_PATH = path.join(REPO_ROOT, "data", "profile.draft.json");
-
-const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif"]);
-
-async function findSeedPdf(): Promise<string> {
-  const entries = await readdir(RAW_DIR, { withFileTypes: true });
-  const pdf = entries.find(
-    (e) => e.isFile() && e.name.toLowerCase().endsWith(".pdf"),
-  );
-  if (!pdf) {
-    throw new Error(
-      `No se encontró ningún PDF en ${RAW_DIR}. Coloca tu CV en formato PDF ahí antes de correr este script.`,
-    );
-  }
-  return path.join(RAW_DIR, pdf.name);
-}
-
-async function findSeedImages(): Promise<string[]> {
-  try {
-    const entries = await readdir(IMAGES_DIR, { withFileTypes: true });
-    return entries
-      .filter(
-        (e) =>
-          e.isFile() &&
-          IMAGE_EXTENSIONS.has(path.extname(e.name).toLowerCase()),
-      )
-      .map((e) => path.join(IMAGES_DIR, e.name))
-      .sort();
-  } catch {
-    return [];
-  }
-}
-
 async function main() {
   console.log("Fase 1 — Extracción de perfil (modo API)\n");
 
-  const pdfPath = await findSeedPdf();
-  const imagePaths = await findSeedImages();
+  const { pdfPath, imagePaths } = await findSeedFiles();
 
   console.log(`PDF de entrada: ${pdfPath}`);
   console.log(
@@ -74,14 +38,14 @@ async function main() {
   const connector = new ApiConnector();
   const draft = await connector.extractProfile({ pdfPath, imagePaths });
 
-  await writeFile(DRAFT_OUTPUT_PATH, JSON.stringify(draft, null, 2), "utf-8");
+  await writeDraft(draft);
 
-  console.log(`✅ Perfil extraído y guardado en: ${DRAFT_OUTPUT_PATH}`);
+  console.log(`✅ Perfil extraído y guardado en: ${PROFILE_DRAFT_PATH}`);
   console.log(
     "\nEste es un BORRADOR para revisión humana — todavía no es data/profile.json.",
   );
   console.log(
-    "Revísalo a mano (o desde el editor /perfil en la Fase 2) antes de confirmarlo como perfil definitivo.",
+    "Revísalo desde el editor /perfil (botón 'Importar desde PDF/imágenes') antes de confirmarlo como perfil definitivo.",
   );
 }
 

@@ -117,6 +117,17 @@ export type Experience = z.infer<typeof experienceSchema>;
 export type Project = z.infer<typeof projectSchema>;
 
 /**
+ * Igual que profileSchema pero con `meta` opcional: el editor web nunca
+ * decide `last_updated`, eso lo calcula el servidor en cada guardado
+ * (ver profile-io.ts writeProfile). Se usa para validar el body de PUT /api/profile.
+ */
+export const profileInputSchema = profileSchema
+  .omit({ meta: true })
+  .extend({ meta: metaSchema.partial().optional() });
+
+export type ProfileInput = z.infer<typeof profileInputSchema>;
+
+/**
  * Regla mínima de la sección 8.3: antes de generar cualquier CV, el perfil
  * debe tener al menos nombre, email, y al menos una experiencia o proyecto.
  */
