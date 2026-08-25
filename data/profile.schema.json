@@ -1,0 +1,176 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/Deivs117/update-cv/data/profile.schema.json",
+  "title": "Profile",
+  "description": "Perfil canónico del usuario de update-cv. Fuente de verdad para la generación de CVs a la medida.",
+  "type": "object",
+  "required": ["personal", "summary", "education", "experience", "meta"],
+  "additionalProperties": false,
+  "properties": {
+    "personal": {
+      "type": "object",
+      "required": ["full_name", "email"],
+      "additionalProperties": false,
+      "properties": {
+        "full_name": { "type": "string", "minLength": 1 },
+        "headline": { "type": "string" },
+        "age": { "type": "integer", "minimum": 0 },
+        "photo_path": { "type": "string" },
+        "location": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "website": { "type": "string" },
+        "social_networks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["platform", "url"],
+            "additionalProperties": false,
+            "properties": {
+              "platform": { "type": "string" },
+              "url": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "es": { "type": "string" },
+        "en": { "type": "string" }
+      }
+    },
+    "founded_companies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "role"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string" },
+          "role": { "type": "string" },
+          "url": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "education": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "institution", "degree", "start_date"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string" },
+          "institution": { "type": "string" },
+          "degree": { "type": "string" },
+          "start_date": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$" },
+          "end_date": {
+            "type": "string",
+            "pattern": "^([0-9]{4}-[0-9]{2}|present)$"
+          },
+          "location": { "type": "string" }
+        }
+      }
+    },
+    "experience": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "company", "role", "start_date", "bullets"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string" },
+          "company": { "type": "string" },
+          "role": { "type": "string" },
+          "start_date": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$" },
+          "end_date": {
+            "type": "string",
+            "pattern": "^([0-9]{4}-[0-9]{2}|present)$"
+          },
+          "location": { "type": "string" },
+          "bullets": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/bullet" }
+          }
+        }
+      }
+    },
+    "projects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "bullets"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "date": { "type": "string" },
+          "bullets": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/bullet" }
+          }
+        }
+      }
+    },
+    "technical_skills": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["category", "items"],
+        "additionalProperties": false,
+        "properties": {
+          "category": { "type": "string" },
+          "items": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "soft_skills": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "languages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["language", "level"],
+        "additionalProperties": false,
+        "properties": {
+          "language": { "type": "string" },
+          "level": { "type": "string" }
+        }
+      }
+    },
+    "certifications_compliance": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "meta": {
+      "type": "object",
+      "required": ["schema_version", "last_updated"],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": { "type": "string" },
+        "last_updated": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "$defs": {
+    "bullet": {
+      "type": "object",
+      "required": ["id", "text_es", "text_en"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "text_es": { "type": "string", "minLength": 1 },
+        "text_en": { "type": "string", "minLength": 1 },
+        "keywords": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

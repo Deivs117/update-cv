@@ -1,0 +1,297 @@
+{
+  "personal": {
+    "full_name": "David Caicedo Samboni",
+    "headline": "Mechatronics Engineer with a Specialization in AI",
+    "phone": "+57 310 331 9477",
+    "email": "davidcaicedosamboni@gmail.com",
+    "website": "https://deivs117.github.io/portfolio/",
+    "social_networks": [
+      {
+        "platform": "LinkedIn",
+        "url": "https://www.linkedin.com/in/davidcaicedo-flux-solutions"
+      },
+      {
+        "platform": "GitHub",
+        "url": "https://github.com/Deivs117"
+      },
+      {
+        "platform": "Instagram",
+        "url": "https://instagram.com/fluxsolutionscali"
+      }
+    ]
+  },
+  "summary": {
+    "es": "Ingeniero Mecatrónico meticuloso con una sólida trayectoria en robótica, sistemas autónomos e inteligencia artificial embebida (Edge AI). Capacidad demostrada para diseñar e implementar sistemas complejos, incluyendo backends serverless en Azure, redes neuronales en microcontroladores y arquitecturas de firmware robustas. Ha liderado con éxito equipos multidisciplinarios y optimizado estrategias de locomoción, logrando un 95% de suavidad en las transiciones. Cuenta con experiencia en C++, ROS, MQTTS y en el desarrollo de pipelines automatizados para mejorar la eficiencia. Motivado por aprovechar habilidades técnicas avanzadas y capacidades de resolución de problemas para impulsar la innovación.",
+    "en": "Detail-oriented Mechatronics Engineer with a strong background in robotics, autonomous systems, and edge AI. Proven ability to design and implement complex systems, including Azure serverless backends, neural networks on microcontrollers, and robust firmware architectures. Successfully led multidisciplinary teams and optimized locomotion strategies, achieving 95% transition smoothness. Possesses expertise in C++, ROS, MQTTS, and developing automated pipelines to enhance efficiency. Eager to leverage advanced technical skills and problem-solving capabilities to drive innovation."
+  },
+  "founded_companies": [
+    {
+      "name": "Flux Solutions Cali",
+      "role": "Founder & Lead Mechatronics Engineer",
+      "url": "https://instagram.com/fluxsolutionscali",
+      "description": "Empresa de soluciones tecnológicas end-to-end que integra robótica, arquitectura Cloud e inteligencia artificial; lidera además el flujo completo de manufactura sustractiva CNC."
+    }
+  ],
+  "education": [
+    {
+      "id": "edu-1",
+      "institution": "Universidad Autónoma de Occidente",
+      "degree": "Mechatronics Engineer",
+      "end_date": "2026-01"
+    },
+    {
+      "id": "edu-2",
+      "institution": "Universidad Autónoma de Occidente",
+      "degree": "Specialization in AI",
+      "end_date": "2026-01"
+    }
+  ],
+  "experience": [
+    {
+      "id": "exp-1",
+      "company": "Flux Solutions Cali",
+      "role": "Lead Mechatronics Engineer",
+      "start_date": "2026-01",
+      "end_date": "present",
+      "bullets": [
+        {
+          "id": "exp-1-b1",
+          "text_es": "Diseñé e implementé un backend serverless en Azure para la adquisición de telemetría industrial en tiempo real y estrategias de mantenimiento predictivo.",
+          "text_en": "Designed and implemented an Azure serverless backend for real-time industrial telemetry acquisition and predictive maintenance strategies.",
+          "keywords": [
+            "azure",
+            "serverless",
+            "telemetry",
+            "predictive maintenance"
+          ]
+        },
+        {
+          "id": "exp-1-b2",
+          "text_es": "Desplegué redes neuronales (CNN/MLP) mediante Edge Impulse en microcontroladores ESP32 para clasificación autónoma de PCBs y detección de anomalías por vibración.",
+          "text_en": "Deployed neural networks (CNN/MLP) via Edge Impulse on ESP32 microcontrollers for autonomous PCB classification and vibration anomaly detection.",
+          "keywords": [
+            "cnn",
+            "mlp",
+            "edge impulse",
+            "esp32",
+            "anomaly detection"
+          ]
+        },
+        {
+          "id": "exp-1-b3",
+          "text_es": "Desarrollé firmware en C++ utilizando protocolos MQTTS seguros, garantizando sincronización de telemetría multinodo y control de actuadores de ultra baja latencia.",
+          "text_en": "Developed C++ firmware utilizing secure MQTTS protocols, ensuring multi-node telemetry synchronization and ultra-low-latency actuator control.",
+          "keywords": [
+            "c++",
+            "mqtts",
+            "firmware",
+            "actuator control"
+          ]
+        },
+        {
+          "id": "exp-1-b4",
+          "text_es": "Creé pipelines automatizados en Bash para acelerar el despliegue de infraestructura, integrando con éxito un sistema de alertas en tiempo real vía Telegram con una tasa de éxito del 99%.",
+          "text_en": "Created automated Bash pipelines to accelerate infrastructure deployment, successfully integrating a real-time Telegram alert system with a 99% success rate.",
+          "keywords": [
+            "bash",
+            "automation",
+            "telegram alerts",
+            "ci/cd"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "exp-2",
+      "company": "NeuroControl Research Group",
+      "role": "Robotics & AI Researcher",
+      "start_date": "2025-01",
+      "end_date": "2025-01",
+      "bullets": []
+    }
+  ],
+  "projects": [
+    {
+      "id": "proj-emotion",
+      "name": "AI-Driven Children's Emotion Recognition System for Mental Health Records",
+      "date": "2025",
+      "bullets": [
+        {
+          "id": "proj-emotion-b1",
+          "text_es": "Diseñé un pipeline de inferencia multietapa que automatiza la segmentación demográfica en tiempo real y la clasificación de estados emocionales para apoyar el monitoreo conductual en poblaciones pediátricas vulnerables.",
+          "text_en": "Designed a multi-stage inference pipeline that automates real-time demographic segmentation and emotional state classification to support behavioral monitoring in vulnerable pediatric populations.",
+          "keywords": [
+            "inference pipeline",
+            "demographic segmentation",
+            "emotion classification",
+            "pediatric health"
+          ]
+        },
+        {
+          "id": "proj-emotion-b2",
+          "text_es": "Desarrollé clasificadores de deep learning personalizados que superaron el desempeño de modelos genéricos de código abierto.",
+          "text_en": "Developed custom deep learning classifiers that outperformed generalized open-source models.",
+          "keywords": [
+            "deep learning",
+            "classifiers",
+            "model benchmarking"
+          ]
+        },
+        {
+          "id": "proj-emotion-b3",
+          "text_es": "Realicé un riguroso benchmarking de casos límite, identificando desbalances sistémicos en los datasets como el principal cuello de botella para la escalabilidad del modelo, guiando futuros ciclos de MLOps e ingeniería de datos.",
+          "text_en": "Conducted rigorous benchmarking of edge cases, identifying systemic dataset imbalances as the primary bottleneck for model scalability, driving future cycles of MLOps and data engineering.",
+          "keywords": [
+            "benchmarking",
+            "mlops",
+            "data engineering",
+            "dataset imbalance"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "proj-salli",
+      "name": "SALLI: Salamander Autonomous Locomotion on Land Infrastructure",
+      "date": "2025",
+      "bullets": [
+        {
+          "id": "proj-salli-b1",
+          "text_es": "Lideré el desarrollo de la plataforma SALLI desde la conceptualización inicial hasta el despliegue técnico, coordinando un equipo multidisciplinario conforme a los estándares de calidad ISO 9001 y planificando sus futuras iteraciones.",
+          "text_en": "Led the development of the SALLI platform from initial conceptualization through technical deployment, coordinating a multidisciplinary team in accordance with ISO 9001 quality standards and planning future iterations.",
+          "keywords": [
+            "project leadership",
+            "iso 9001",
+            "multidisciplinary team"
+          ]
+        },
+        {
+          "id": "proj-salli-b2",
+          "text_es": "Diseñé la arquitectura mecánica integral del sistema y realicé la optimización estructural del chasis, maximizando la estabilidad operativa, la distribución de carga y la durabilidad en entornos dinámicos.",
+          "text_en": "Designed the system's comprehensive mechanical architecture and performed structural optimization of the chassis, maximizing operational stability, load distribution, and durability in dynamic environments.",
+          "keywords": [
+            "mechanical design",
+            "structural optimization",
+            "cad"
+          ]
+        },
+        {
+          "id": "proj-salli-b3",
+          "text_es": "Diseñé e implementé una arquitectura de firmware inalámbrico robusta basada en un modelo maestro-esclavo utilizando múltiples microcontroladores ESP32, logrando la sincronización de un sistema modular de tracción complejo y procesamiento de telemetría en tiempo real.",
+          "text_en": "Designed and implemented a robust wireless firmware architecture based on a master-slave model using multiple ESP32 microcontrollers, achieving synchronization of a complex modular drive system and real-time telemetry processing.",
+          "keywords": [
+            "firmware",
+            "esp32",
+            "master-slave",
+            "telemetry"
+          ]
+        },
+        {
+          "id": "proj-salli-b4",
+          "text_es": "Optimicé y desplegué completamente una red neuronal convolucional ligera directamente en hardware restringido (ESP-CAM) para edge computing, habilitando seguimiento autónomo de objetivos en tiempo real y evasión inteligente de obstáculos.",
+          "text_en": "Optimized and fully deployed a lightweight convolutional neural network directly on constrained hardware (ESP-CAM) for edge computing, enabling autonomous real-time target tracking and intelligent obstacle avoidance.",
+          "keywords": [
+            "cnn",
+            "edge computing",
+            "esp-cam",
+            "obstacle avoidance"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "proj-quadruped",
+      "name": "Autonomous Hybrid Quadruped-Wheeled Platform for Multiple Biomes",
+      "date": "2024",
+      "bullets": [
+        {
+          "id": "proj-quadruped-b1",
+          "text_es": "Diseñé e implementé redes neuronales para controlar estrategias de locomoción híbrida complejas, garantizando estabilidad adaptativa en distintos terrenos.",
+          "text_en": "Designed and implemented neural networks to control complex hybrid locomotion strategies, ensuring adaptive stability across different terrains.",
+          "keywords": [
+            "neural networks",
+            "locomotion control",
+            "adaptive stability"
+          ]
+        },
+        {
+          "id": "proj-quadruped-b2",
+          "text_es": "Parametricé y realicé rigurosas pruebas de validación para estados de transición multimodal, optimizando la transición fluida entre caminata cuadrúpeda, conducción direccional y movilidad omnidireccional hasta un 95%.",
+          "text_en": "Parameterized and conducted rigorous validation tests for multimodal transition states, optimizing the smooth transition between quadrupedal walking, directional driving, and omnidirectional mobility to 95%.",
+          "keywords": [
+            "validation testing",
+            "multimodal transition",
+            "locomotion"
+          ]
+        },
+        {
+          "id": "proj-quadruped-b3",
+          "text_es": "Desarrollé y desplegué la arquitectura central de control autónomo dentro de Robot Operating System (ROS), coordinando la estimación de estado y ejecutando bucles de locomoción en tiempo real.",
+          "text_en": "Developed and deployed the core autonomous control architecture within the Robot Operating System (ROS), coordinating state estimation and executing real-time locomotion loops.",
+          "keywords": [
+            "ros",
+            "control architecture",
+            "state estimation"
+          ]
+        }
+      ]
+    }
+  ],
+  "technical_skills": [
+    {
+      "category": "Core Competencies",
+      "items": [
+        "Edge AI & Embedded Vision",
+        "Robotics & Autonomous Systems (ROS)",
+        "Firmware Development (C/C++)",
+        "Control Systems Engineering (PID)",
+        "Industrial IoT & Telemetry (MQTTS)",
+        "Advanced CAD & Structural Design",
+        "Cloud Infrastructure (Azure)"
+      ]
+    },
+    {
+      "category": "Programming Languages",
+      "items": [
+        "C++",
+        "C",
+        "C#",
+        "JavaScript",
+        "HTML/CSS",
+        "TeX",
+        "Bash",
+        "SQL",
+        "Python"
+      ]
+    }
+  ],
+  "soft_skills": [
+    "Cross-Functional Leadership",
+    "Multidisciplinary Collaboration",
+    "Research-Driven Problem Solving",
+    "Technical Adaptability",
+    "Strategic Communication",
+    "Builder Mindset",
+    "Analytical Critical Thinking",
+    "Ownership & Initiative"
+  ],
+  "languages": [
+    {
+      "language": "Spanish",
+      "level": "Native"
+    },
+    {
+      "language": "English",
+      "level": "B2"
+    }
+  ],
+  "certifications_compliance": [
+    "ISO 9001",
+    "ISO 10218",
+    "ISO/TS 15066",
+    "ISO 13482",
+    "ISO/IEC 42001",
+    "ISO 13849-1",
+    "IEC 62443"
+  ]
+}
