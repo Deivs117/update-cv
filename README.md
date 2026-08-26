@@ -16,7 +16,7 @@ Ver `ARQUITECTURA_update-cv.md` para la especificación completa del sistema.
 - [x] Fase 3 — Plantillas y compilación
 - [x] Fase 4 — Motor de generación a medida
 - [x] Fase 5 — Carta de presentación
-- [ ] Fase 6 — Modo Agente
+- [x] Fase 6 — Modo Agente
 - [ ] Fase 7 — Pulido
 
 ## Decisiones ajustadas durante la construcción (vs. el documento original)
@@ -199,3 +199,27 @@ versión en español). Ahora tienen variantes `_es`/`_en`, igual que los bullets
 - `languages[]`: `language`/`level` → `language_es`/`language_en`/`level_es`/`level_en`
 
 Los nombres propios (`company`, `institution`, `name` de empresa) NO se traducen.
+
+## Notas de la Fase 6 (modo Agente)
+
+- `web/lib/claude/agent-connector.ts`: implementa el mismo `ClaudeConnector` que
+  `api-connector.ts`, pero escribiendo una tarea en `.claude-tasks/pending/{task_id}.json` y
+  esperando (polling) el resultado en `.claude-tasks/done/{task_id}.result.json`. La petición
+  HTTP queda bloqueada hasta que el resultado aparece o se cumple `AGENT_TASK_TIMEOUT_MS`
+  (decisión tomada con el usuario: bloqueo simple con timeout largo en vez de un flujo de
+  2 pasos con botón "verificar" -- más simple para un MVP personal).
+- `web/lib/claude/get-connector.ts`: fábrica que elige `ApiConnector`/`AgentConnector` según
+  `CLAUDE_MODE` en `.env`, con posibilidad de override puntual (`claudeMode`/`mode` en el
+  body de las rutas, y un selector en `/nueva-aplicacion` y en el botón de importar de
+  `/perfil`).
+- `CLAUDE.md`: instrucciones completas para que Claude Code procese cada tipo de tarea
+  (`extract_profile`, `analyze_job`, `tailor_cv`, `generate_cover_letter`), con la forma
+  exacta de entrada/salida de cada una, remitiendo a `web/lib/claude/prompts.ts` para
+  mantener paridad con el modo API.
+- Variables nuevas en `.env.example`: `AGENT_POLL_INTERVAL_MS` (default 3000) y
+  `AGENT_TASK_TIMEOUT_MS` (default 900000 = 15 min).
+- Probado de punta a punta simulando manualmente el rol de Claude Code (escribir el
+  resultado en `.claude-tasks/done/`): la tarea se crea, la petición queda esperando, el
+  resultado se recoge correctamente y el archivo de `pending/` se limpia. También se probó
+  el camino de timeout (sin nadie procesando la tarea): mensaje de error claro con el `task_id`
+  y la ruta del archivo pendiente.

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { ApiConnector } from "@/lib/claude/api-connector";
+import { getConnector, type ClaudeMode } from "@/lib/claude/get-connector";
 import { ClaudeConnectorError } from "@/lib/claude/connector.interface";
 import { findSeedFiles, ProfileIOError, writeDraft } from "@/lib/profile-io";
 
@@ -7,13 +7,21 @@ import { findSeedFiles, ProfileIOError, writeDraft } from "@/lib/profile-io";
  * Dispara el Módulo 1 (extracción) sobre lo que haya en data/raw/ y guarda el
  * resultado en data/profile.draft.json para revisión humana.
  *
- * Fase 1/2: solo modo API. El modo Agente (CLAUDE_MODE=agent) se implementa
- * en la Fase 6 vía el buzón .claude-tasks/.
+ * Body opcional: { "mode": "api" | "agent" } para forzar un modo puntual
+ * (sección 8.2); si se omite, usa el default de CLAUDE_MODE en .env.
  */
-export async function POST() {
+export async function POST(request: Request) {
+  let mode: ClaudeMode | undefined;
+  try {
+    const body = await request.json();
+    if (body?.mode === "api" || body?.mode === "agent") mode = body.mode;
+  } catch {
+    // Sin body o no-JSON: usar el modo default de CLAUDE_MODE.
+  }
+
   try {
     const { pdfPath, imagePaths } = await findSeedFiles();
-    const connector = new ApiConnector();
+    const connector = getConnector(mode);
     const draft = await connector.extractProfile({ pdfPath, imagePaths });
     await writeDraft(draft);
     return NextResponse.json({ draft });

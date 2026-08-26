@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { ApiConnector } from "@/lib/claude/api-connector";
+import { getConnector, type ClaudeMode } from "@/lib/claude/get-connector";
 import { ClaudeConnectorError } from "@/lib/claude/connector.interface";
 
 /** Sección 9.2 — Paso 1: análisis de la vacante (para mostrar en la UI antes de generar). */
@@ -19,8 +19,11 @@ export async function POST(request: Request) {
     );
   }
 
+  const rawMode = (body as { claudeMode?: unknown })?.claudeMode;
+  const mode: ClaudeMode | undefined = rawMode === "api" || rawMode === "agent" ? rawMode : undefined;
+
   try {
-    const connector = new ApiConnector();
+    const connector = getConnector(mode);
     const analysis = await connector.analyzeJob({ jobDescription });
     return NextResponse.json({ analysis });
   } catch (err) {

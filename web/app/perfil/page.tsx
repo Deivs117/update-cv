@@ -17,6 +17,7 @@ export default function PerfilPage() {
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
   const [banner, setBanner] = useState<Banner>(null);
+  const [claudeMode, setClaudeMode] = useState<"api" | "agent">("api");
 
   useEffect(() => {
     let cancelled = false;
@@ -108,7 +109,11 @@ export default function PerfilPage() {
     setImporting(true);
     setBanner(null);
     try {
-      const res = await fetch("/api/profile/extract", { method: "POST" });
+      const res = await fetch("/api/profile/extract", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: claudeMode }),
+      });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error);
       setProfile(toEditableProfile(json.draft));
@@ -141,7 +146,16 @@ export default function PerfilPage() {
             Fuente de verdad: <code>data/profile.json</code>
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={claudeMode}
+            onChange={(e) => setClaudeMode(e.target.value as "api" | "agent")}
+            className="rounded-md border border-zinc-300 bg-white px-2 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+            title="Modo Claude para la extracción"
+          >
+            <option value="api">Modo API</option>
+            <option value="agent">Modo Agente</option>
+          </select>
           <button
             type="button"
             onClick={handleImport}

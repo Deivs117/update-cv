@@ -25,6 +25,7 @@ export default function NuevaAplicacionPage() {
   const [templateVariant, setTemplateVariant] = useState<"ats" | "visual">("ats");
   const [coverLetterEnabled, setCoverLetterEnabled] = useState(false);
   const [coverLetterFormat, setCoverLetterFormat] = useState<"pdf" | "text">("pdf");
+  const [claudeMode, setClaudeMode] = useState<"api" | "agent">("api");
   const [copied, setCopied] = useState(false);
 
   const [jobAnalysis, setJobAnalysis] = useState<JobAnalysis | null>(null);
@@ -40,7 +41,7 @@ export default function NuevaAplicacionPage() {
       const res = await fetch("/api/nueva-aplicacion/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jobDescription }),
+        body: JSON.stringify({ jobDescription, claudeMode }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error);
@@ -69,6 +70,7 @@ export default function NuevaAplicacionPage() {
           templateVariant,
           jobAnalysis,
           coverLetter: { enabled: coverLetterEnabled, format: coverLetterFormat },
+          claudeMode,
         }),
       });
       const json = await res.json();
@@ -130,6 +132,20 @@ export default function NuevaAplicacionPage() {
               />
             </label>
           </div>
+
+          <fieldset className="flex flex-col gap-1 text-sm">
+            <legend className="font-medium">Modo Claude</legend>
+            <label className="flex items-center gap-2">
+              <input type="radio" checked={claudeMode === "api"} onChange={() => setClaudeMode("api")} />
+              API (automático, requiere ANTHROPIC_API_KEY)
+            </label>
+            <label className="flex items-center gap-2">
+              <input type="radio" checked={claudeMode === "agent"} onChange={() => setClaudeMode("agent")} />
+              Agente (sin API key -- la petición espera hasta que proceses las
+              tareas con Claude Code en una terminal, ver CLAUDE.md)
+            </label>
+          </fieldset>
+
           <label className="flex flex-col gap-1 text-sm">
             <span className="font-medium">Texto de la vacante</span>
             <textarea

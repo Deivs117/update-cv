@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import path from "node:path";
 import { writeFile } from "node:fs/promises";
-import { ApiConnector } from "@/lib/claude/api-connector";
+import { getConnector, resolveClaudeMode, type ClaudeMode } from "@/lib/claude/get-connector";
 import { ClaudeConnectorError, type JobAnalysis, type Language } from "@/lib/claude/connector.interface";
 import { hasMinimumViableContent } from "@/lib/validation/profile.zod";
 import { ProfileIOError, readProfile, REPO_ROOT } from "@/lib/profile-io";
@@ -30,6 +30,7 @@ interface GenerateRequestBody {
   templateVariant: TemplateVariant;
   jobAnalysis?: JobAnalysis;
   coverLetter: CoverLetterOptions;
+  claudeMode?: ClaudeMode;
 }
 
 function parseBody(body: unknown): GenerateRequestBody | null {
@@ -51,6 +52,9 @@ function parseBody(body: unknown): GenerateRequestBody | null {
     format: rawCoverLetter.format === "text" ? "text" : "pdf",
   };
 
+  const claudeMode: ClaudeMode | undefined =
+    b.claudeMode === "api" || b.claudeMode === "agent" ? b.claudeMode : undefined;
+
   return {
     jobDescription: b.jobDescription,
     company: b.company,
@@ -59,6 +63,7 @@ function parseBody(body: unknown): GenerateRequestBody | null {
     templateVariant: b.templateVariant,
     jobAnalysis: b.jobAnalysis as JobAnalysis | undefined,
     coverLetter,
+    claudeMode,
   };
 }
 
@@ -107,7 +112,7 @@ export async function POST(request: Request) {
 
     const { experienceYears, recommendedMaxPages } = getPageRecommendation(profile.experience ?? []);
 
-    const connector = new ApiConnector();
+    const connector = getConnector(body.claudeMode);
     const jobAnalysis = body.jobAnalysis ?? (await connector.analyzeJob({ jobDescription: body.jobDescription }));
     const tailored = await connector.tailorCV({
       profile,
@@ -176,7 +181,7 @@ export async function POST(request: Request) {
       company: body.company,
       role: body.role,
       language: body.language,
-      claudeMode: "api",
+      claudeMode: resolveClaudeMode(body.claudeMode),
       claudeModel: process.env.CLAUDE_MODEL || "claude-sonnet-5",
       templateVariant: body.templateVariant,
       pages,
