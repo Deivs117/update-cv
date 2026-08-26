@@ -146,7 +146,8 @@ function section(heading: string, body: string): string {
   return `\\section*{${escapeLatex(heading)}}\n${body}`;
 }
 
-function buildContactLine(data: CVData): string {
+/** Exportada para reusar en render-cover-letter.ts (misma forma de datos personales). */
+export function buildContactLine(data: CVData): string {
   const parts: string[] = [];
   if (data.location) parts.push(escapeLatex(data.location));
   if (data.phone) parts.push(escapeLatex(data.phone));

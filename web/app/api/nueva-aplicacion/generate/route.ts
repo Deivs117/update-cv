@@ -9,11 +9,18 @@ import { getPageRecommendation } from "@/lib/experience-years";
 import { buildFinalCVData } from "@/lib/latex/build-final-cvdata";
 import { renderCV } from "@/lib/latex/render";
 import { renderVisualCV, prepareVisualAssets } from "@/lib/latex/render-visual";
+import { renderCoverLetter } from "@/lib/latex/render-cover-letter";
 import { compileLatex, LatexCompileError } from "@/lib/latex/compile";
 import { countPdfPages, PageCountError } from "@/lib/latex/page-count";
 import { createApplicationDir, writeApplicationOutputs, type ApplicationMetadata } from "@/lib/apps-io";
 
 type TemplateVariant = "ats" | "visual";
+type CoverLetterFormat = "pdf" | "text";
+
+interface CoverLetterOptions {
+  enabled: boolean;
+  format: CoverLetterFormat;
+}
 
 interface GenerateRequestBody {
   jobDescription: string;
@@ -22,6 +29,7 @@ interface GenerateRequestBody {
   language: Language;
   templateVariant: TemplateVariant;
   jobAnalysis?: JobAnalysis;
+  coverLetter: CoverLetterOptions;
 }
 
 function parseBody(body: unknown): GenerateRequestBody | null {
@@ -36,6 +44,13 @@ function parseBody(body: unknown): GenerateRequestBody | null {
   ) {
     return null;
   }
+
+  const rawCoverLetter = (b.coverLetter as Record<string, unknown> | undefined) ?? {};
+  const coverLetter: CoverLetterOptions = {
+    enabled: rawCoverLetter.enabled === true,
+    format: rawCoverLetter.format === "text" ? "text" : "pdf",
+  };
+
   return {
     jobDescription: b.jobDescription,
     company: b.company,
@@ -43,6 +58,7 @@ function parseBody(body: unknown): GenerateRequestBody | null {
     language: b.language,
     templateVariant: b.templateVariant,
     jobAnalysis: b.jobAnalysis as JobAnalysis | undefined,
+    coverLetter,
   };
 }
 
@@ -126,6 +142,36 @@ export async function POST(request: Request) {
     const { pdfPath } = await compileLatex("cv.tex", dir);
     const pages = await countPdfPages(pdfPath);
 
+    // Módulo 4 (sección 10): carta de presentación opcional, reusa el mismo
+    // jobAnalysis -- no se re-analiza la vacante dos veces.
+    let coverLetterUrl: string | undefined;
+    let coverLetterText: string | undefined;
+    if (body.coverLetter.enabled) {
+      const letterBody = await connector.generateCoverLetter({
+        profile,
+        jobDescription: body.jobDescription,
+        language: body.language,
+        company: body.company,
+        role: body.role,
+        jobAnalysis,
+      });
+
+      if (body.coverLetter.format === "text") {
+        await writeFile(path.join(dir, "cover_letter.txt"), letterBody, "utf-8");
+        coverLetterText = letterBody;
+      } else {
+        const letterTex = await renderCoverLetter({
+          language: body.language,
+          personal: cvData,
+          company: body.company,
+          bodyText: letterBody,
+        });
+        await writeFile(path.join(dir, "cover_letter.tex"), letterTex, "utf-8");
+        await compileLatex("cover_letter.tex", dir);
+        coverLetterUrl = `/api/apps/${slug}/cover_letter.pdf`;
+      }
+    }
+
     const metadata: ApplicationMetadata = {
       company: body.company,
       role: body.role,
@@ -137,6 +183,7 @@ export async function POST(request: Request) {
       recommendedMaxPages,
       forcedTrim: false,
       createdAt: new Date().toISOString(),
+      coverLetter: body.coverLetter.enabled ? body.coverLetter.format : "none",
     };
     await writeApplicationOutputs(dir, { jobDescription: body.jobDescription, metadata });
 
@@ -147,6 +194,8 @@ export async function POST(request: Request) {
       experienceYears,
       jobAnalysis,
       pdfUrl: `/api/apps/${slug}/cv.pdf`,
+      coverLetterUrl,
+      coverLetterText,
     });
   } catch (err) {
     if (

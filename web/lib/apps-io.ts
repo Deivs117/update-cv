@@ -37,6 +37,8 @@ export interface ApplicationMetadata {
   recommendedMaxPages: number;
   forcedTrim: boolean;
   createdAt: string;
+  /** "none" si no se pidió carta de presentación (sección 10). */
+  coverLetter: "none" | "pdf" | "text";
 }
 
 /** Crea (o reutiliza) la carpeta apps/{empresa}-{puesto}-{fecha}/ y devuelve su ruta absoluta. */

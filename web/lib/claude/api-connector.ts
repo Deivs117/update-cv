@@ -2,8 +2,9 @@
  * Implementación del ClaudeConnector vía Anthropic API directa (@anthropic-ai/sdk).
  * Requiere ANTHROPIC_API_KEY en el entorno (sección 7.2).
  *
- * Fase 1: solo extractProfile está implementado de verdad. analyzeJob, tailorCV
- * y generateCoverLetter se completan en las Fases 4 y 5.
+ * extractProfile (Fase 1), analyzeJob/tailorCV (Fase 4) y generateCoverLetter
+ * (Fase 5) están todos implementados. agent-connector.ts (modo Agente, Fase 6)
+ * debe mantener paridad de comportamiento con este archivo.
  */
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -20,7 +21,9 @@ import {
 import {
   ANALYZE_JOB_SYSTEM_PROMPT,
   buildAnalyzeJobUserPrompt,
+  buildCoverLetterUserPrompt,
   buildTailorCVUserPrompt,
+  COVER_LETTER_SYSTEM_PROMPT,
   EXTRACT_PROFILE_SYSTEM_PROMPT,
   EXTRACT_PROFILE_USER_PROMPT,
   TAILOR_CV_SYSTEM_PROMPT,
@@ -36,6 +39,7 @@ const DEFAULT_MODEL = "claude-sonnet-5";
 const EXTRACTION_MAX_TOKENS = 16000;
 const ANALYSIS_MAX_TOKENS = 2000;
 const TAILOR_MAX_TOKENS = 8000;
+const COVER_LETTER_MAX_TOKENS = 2000;
 
 function getApiKey(): string {
   const key = process.env.ANTHROPIC_API_KEY;
@@ -108,12 +112,12 @@ export class ApiConnector implements ClaudeConnector {
     this.model = getModel();
   }
 
-  /** Llama a Claude con un system+user prompt y devuelve el JSON parseado de la respuesta. */
-  private async askForJson(
+  /** Llama a Claude con un system+user prompt y devuelve el texto crudo de la respuesta. */
+  private async askForText(
     systemPrompt: string,
     userPrompt: string,
     maxTokens: number,
-  ): Promise<unknown> {
+  ): Promise<string> {
     let response: Anthropic.Message;
     try {
       response = await this.client.messages.create({
@@ -133,9 +137,18 @@ export class ApiConnector implements ClaudeConnector {
     if (!textBlock || textBlock.type !== "text") {
       throw new ClaudeConnectorError("Claude no devolvió contenido de texto en la respuesta.");
     }
+    return textBlock.text;
+  }
 
+  /** Llama a Claude con un system+user prompt y devuelve el JSON parseado de la respuesta. */
+  private async askForJson(
+    systemPrompt: string,
+    userPrompt: string,
+    maxTokens: number,
+  ): Promise<unknown> {
+    const text = await this.askForText(systemPrompt, userPrompt, maxTokens);
     try {
-      return JSON.parse(extractJsonObject(textBlock.text));
+      return JSON.parse(extractJsonObject(text));
     } catch (err) {
       throw new ClaudeConnectorError(
         "No se pudo interpretar la respuesta de Claude como JSON válido (posiblemente truncada por max_tokens).",
@@ -277,6 +290,7 @@ export class ApiConnector implements ClaudeConnector {
         jobDescription: input.jobDescription,
         jobAnalysisJson: JSON.stringify(jobAnalysis),
         recommendedMaxPages: input.maxPages,
+        language: input.language,
       }),
       TAILOR_MAX_TOKENS,
     );
@@ -292,9 +306,23 @@ export class ApiConnector implements ClaudeConnector {
     return resolveTailoredContent(input.profile, input.language, result.data);
   }
 
-  async generateCoverLetter(_input: GenerateCoverLetterInput): Promise<string> {
-    throw new ClaudeConnectorError(
-      "generateCoverLetter todavía no está implementado (llega en la Fase 5 del roadmap).",
+  async generateCoverLetter(input: GenerateCoverLetterInput): Promise<string> {
+    const jobAnalysis = input.jobAnalysis ?? (await this.analyzeJob({ jobDescription: input.jobDescription }));
+    const candidateContent = buildCandidateContent(input.profile, input.language);
+
+    const text = await this.askForText(
+      COVER_LETTER_SYSTEM_PROMPT,
+      buildCoverLetterUserPrompt({
+        candidateContentJson: JSON.stringify(candidateContent),
+        jobDescription: input.jobDescription,
+        jobAnalysisJson: JSON.stringify(jobAnalysis),
+        company: input.company,
+        role: input.role,
+        language: input.language,
+      }),
+      COVER_LETTER_MAX_TOKENS,
     );
+
+    return text.trim();
   }
 }

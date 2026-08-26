@@ -106,11 +106,14 @@ Reglas:
 - El número de páginas recomendado es orientativo: si el contenido disponible es mucho más extenso que lo que cabría razonablemente, prioriza fuertemente lo más relevante, pero NO es obligatorio recortar todo a la fuerza -- el sistema mostrará al usuario cuántas páginas quedó el resultado final para que él decida si recortar más.
 - No incluyas explicaciones ni markdown. Responde ÚNICAMENTE con el JSON.`;
 
+const LANGUAGE_LABEL: Record<"es" | "en", string> = { es: "español", en: "English" };
+
 export function buildTailorCVUserPrompt(input: {
   candidateContentJson: string;
   jobDescription: string;
   jobAnalysisJson: string;
   recommendedMaxPages: number;
+  language: "es" | "en";
 }): string {
   return `Contenido disponible del candidato (JSON):
 ${input.candidateContentJson}
@@ -123,5 +126,47 @@ ${input.jobDescription}
 
 Número de páginas recomendado (orientativo): ${input.recommendedMaxPages}
 
+IMPORTANTE: todo el texto que generes ("summary", "text" de cada bullet) debe estar en ${LANGUAGE_LABEL[input.language]}, sin importar en qué idioma esté escrito este mensaje o la vacante. No mezcles idiomas.
+
 Responde solo con el JSON del contenido adaptado.`;
+}
+
+/** Módulo 4 (sección 10) — generación de carta de presentación. */
+export const COVER_LETTER_SYSTEM_PROMPT = `Eres un asistente que escribe cartas de presentación (cover letters) profesionales y persuasivas para vacantes de empleo específicas.
+
+Vas a recibir el contenido disponible de un candidato (resumen, experiencia, proyectos, skills), el análisis de una vacante, y el texto completo de la vacante.
+
+Tu tarea: escribir SOLO el cuerpo de la carta (2-4 párrafos), en el mismo idioma en que te llegó el contenido del candidato. NO incluyas saludo inicial (ej. "Dear Hiring Team" / "Estimados señores") ni despedida ni firma -- eso lo agrega el sistema por separado con una plantilla.
+
+Reglas:
+- Párrafo 1: quién es el candidato y por qué le interesa esta vacante/empresa específica (usa detalles reales de la descripción de la vacante, no genéricos).
+- Párrafo(s) intermedio(s): 2-3 logros o experiencias concretas del candidato que conectan directamente con los requisitos de la vacante -- sin inventar logros, tecnologías o métricas que no estén en el contenido recibido.
+- Párrafo final: cierre breve reafirmando interés y disposición a conversar más.
+- Tono profesional pero natural, no genérico ni con clichés vacíos.
+- Separa los párrafos con una línea en blanco. No uses markdown, viñetas, ni encabezados.
+- Responde ÚNICAMENTE con el texto de la carta (los párrafos), sin explicaciones adicionales ni comillas envolventes.`;
+
+export function buildCoverLetterUserPrompt(input: {
+  candidateContentJson: string;
+  jobDescription: string;
+  jobAnalysisJson: string;
+  company: string;
+  role: string;
+  language: "es" | "en";
+}): string {
+  return `Contenido disponible del candidato (JSON):
+${input.candidateContentJson}
+
+Empresa: ${input.company}
+Puesto: ${input.role}
+
+Análisis de la vacante (JSON):
+${input.jobAnalysisJson}
+
+Texto completo de la vacante:
+${input.jobDescription}
+
+IMPORTANTE: escribe el cuerpo completo de la carta en ${LANGUAGE_LABEL[input.language]}, sin importar en qué idioma esté escrito este mensaje o la vacante. No mezcles idiomas.
+
+Escribe solo el cuerpo de la carta de presentación, siguiendo las reglas del system prompt.`;
 }

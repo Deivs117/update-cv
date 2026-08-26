@@ -12,6 +12,8 @@ interface GenerateResult {
   experienceYears: number;
   jobAnalysis: JobAnalysis;
   pdfUrl: string;
+  coverLetterUrl?: string;
+  coverLetterText?: string;
 }
 
 export default function NuevaAplicacionPage() {
@@ -21,6 +23,9 @@ export default function NuevaAplicacionPage() {
   const [role, setRole] = useState("");
   const [language, setLanguage] = useState<Language>("es");
   const [templateVariant, setTemplateVariant] = useState<"ats" | "visual">("ats");
+  const [coverLetterEnabled, setCoverLetterEnabled] = useState(false);
+  const [coverLetterFormat, setCoverLetterFormat] = useState<"pdf" | "text">("pdf");
+  const [copied, setCopied] = useState(false);
 
   const [jobAnalysis, setJobAnalysis] = useState<JobAnalysis | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
@@ -63,6 +68,7 @@ export default function NuevaAplicacionPage() {
           language,
           templateVariant,
           jobAnalysis,
+          coverLetter: { enabled: coverLetterEnabled, format: coverLetterFormat },
         }),
       });
       const json = await res.json();
@@ -208,6 +214,38 @@ export default function NuevaAplicacionPage() {
             </fieldset>
           </div>
 
+          <fieldset className="flex flex-col gap-2 text-sm">
+            <legend className="font-medium">Carta de presentación</legend>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={coverLetterEnabled}
+                onChange={(e) => setCoverLetterEnabled(e.target.checked)}
+              />
+              Generar carta de presentación para esta aplicación
+            </label>
+            {coverLetterEnabled && (
+              <div className="ml-6 flex flex-col gap-1">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    checked={coverLetterFormat === "pdf"}
+                    onChange={() => setCoverLetterFormat("pdf")}
+                  />
+                  PDF (compilado vía LaTeX)
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    checked={coverLetterFormat === "text"}
+                    onChange={() => setCoverLetterFormat("text")}
+                  />
+                  Texto plano (para copiar/pegar, sin compilar)
+                </label>
+              </div>
+            )}
+          </fieldset>
+
           <div className="flex gap-2">
             <button
               type="button"
@@ -258,6 +296,46 @@ export default function NuevaAplicacionPage() {
                 className="h-[70vh] w-full rounded-lg border border-zinc-200 dark:border-zinc-800"
                 title="Vista previa del CV generado"
               />
+
+              {result.coverLetterUrl && (
+                <div className="flex flex-col gap-2">
+                  <h2 className="font-semibold text-zinc-900 dark:text-zinc-100">
+                    Carta de presentación
+                  </h2>
+                  <iframe
+                    src={result.coverLetterUrl}
+                    className="h-[70vh] w-full rounded-lg border border-zinc-200 dark:border-zinc-800"
+                    title="Vista previa de la carta de presentación"
+                  />
+                </div>
+              )}
+
+              {result.coverLetterText && (
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <h2 className="font-semibold text-zinc-900 dark:text-zinc-100">
+                      Carta de presentación (texto)
+                    </h2>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await navigator.clipboard.writeText(result.coverLetterText ?? "");
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 2000);
+                      }}
+                      className="rounded-md border border-zinc-300 px-3 py-1 text-xs hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
+                    >
+                      {copied ? "¡Copiado!" : "Copiar"}
+                    </button>
+                  </div>
+                  <textarea
+                    readOnly
+                    value={result.coverLetterText}
+                    rows={14}
+                    className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+                  />
+                </div>
+              )}
             </>
           )}
 

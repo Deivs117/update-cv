@@ -65,6 +65,8 @@ export interface GenerateCoverLetterInput {
   profile: Profile;
   jobDescription: string;
   language: Language;
+  company: string;
+  role: string;
   jobAnalysis?: JobAnalysis;
 }
 

@@ -15,7 +15,7 @@ Ver `ARQUITECTURA_update-cv.md` para la especificación completa del sistema.
 - [x] Fase 2 — Interfaz de perfil
 - [x] Fase 3 — Plantillas y compilación
 - [x] Fase 4 — Motor de generación a medida
-- [ ] Fase 5 — Carta de presentación
+- [x] Fase 5 — Carta de presentación
 - [ ] Fase 6 — Modo Agente
 - [ ] Fase 7 — Pulido
 
@@ -51,6 +51,26 @@ Ver `ARQUITECTURA_update-cv.md` para la especificación completa del sistema.
   análisis correcto en inglés, selección de bullets relevante sin inventar tecnologías que
   el candidato no tiene, resultado de 2 páginas con la recomendación (1 página) mostrada
   como retroalimentación no bloqueante.
+- **Bug real corregido:** el análisis de vacante y la carta de presentación a veces salían
+  en español aunque la vacante/CV estuvieran en inglés (los system prompts están escritos en
+  español, lo que sesgaba al modelo). Se agregó una instrucción explícita de idioma objetivo
+  en cada prompt (`buildTailorCVUserPrompt`/`buildCoverLetterUserPrompt`/análisis), en vez de
+  confiar en "responde en el mismo idioma que el contenido recibido".
+
+## Notas de la Fase 5 (carta de presentación)
+
+- `templates/latex/cover-letter-{es,en}.tex.tpl`: plantilla ATS-safe de una columna (mismo
+  estilo que el CV). `web/lib/latex/render-cover-letter.ts` la rellena reusando
+  `buildContactLine`/`escapeLatex` de render.ts.
+- `generateCoverLetter` en `api-connector.ts`: reusa el mismo `jobAnalysis` del CV (no
+  re-analiza la vacante), y solo genera el CUERPO de la carta -- saludo/fecha/despedida
+  los agrega la plantilla, no el modelo.
+- En `/nueva-aplicacion`, checkbox opcional + elección de formato PDF (compilado) o texto
+  plano (textarea + botón "Copiar", sin compilar). `POST /api/nueva-aplicacion/generate`
+  escribe `cover_letter.pdf`/`.tex` o `cover_letter.txt` junto al CV en la misma carpeta
+  de la aplicación.
+- Probado con la vacante real de Power Digital en ambos formatos e idiomas (PDF en inglés,
+  texto en español) -- contenido coherente, sin inventar logros ni mezclar idiomas.
 
 ## Requisitos
 
