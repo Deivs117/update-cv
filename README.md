@@ -293,3 +293,49 @@ Se resolvió con dos piezas (decisión tomada con el usuario vía `AskUserQuesti
   `jobId` de inmediato y el polling refleja `running` → `done` con el resultado correcto;
   una tarea real escrita a mano en `.claude-tasks/pending/` fue recogida y resuelta por
   `agent:watch` en ~12s usando `claude -p` de verdad, sin intervención manual.
+- **Fix de robustez (2026-08-26):** el archivo de resultado no se escribe de forma atómica,
+  así que había una ventana real en la que la web app lo veía ya creado pero aún a medio
+  escribir y fallaba con "resultado no es JSON válido" sobre un archivo que segundos después
+  era perfectamente válido. `agent-connector.ts` ahora reintenta el parseo (hasta 5 veces,
+  al ritmo de `AGENT_POLL_INTERVAL_MS`) antes de dar la tarea por corrupta de verdad. Además,
+  `.claude-tasks/done/{task_id}.result.json` ahora se borra apenas se consume y valida (antes
+  quedaba acumulando archivos indefinidamente -- son efímeros, no hay razón para conservarlos).
+
+## Limpieza y auditoría del repo (2026-08-27)
+
+Pasada de limpieza sin cambios funcionales, tras escanear todo el repo:
+
+- Se quitaron los SVG de scaffold de `create-next-app` en `web/public/` (`file.svg`,
+  `globe.svg`, `next.svg`, `vercel.svg`, `window.svg`) -- no se referenciaban en ningún
+  lado del código.
+- Se quitaron dos tipos exportados sin ningún uso (`Bullet`, `Project` en
+  `profile.zod.ts`) -- quedaron huérfanos de refactors anteriores; `Profile`/`Experience`
+  (que sí se usan) se conservan.
+- `.claude-tasks/done/` ahora se autolimpia (ver fix de robustez arriba) en vez de acumular
+  un archivo por cada tarea procesada para siempre.
+- Verificado (no se tocó, sigue siendo necesario): dependencias de `package.json` todas en
+  uso, `data/profile.draft.json` es un borrador real y activo del flujo de `/perfil` (no
+  data de prueba obsoleta), `web/scripts/test-latex-pipeline.ts` sigue siendo el smoke test
+  del pipeline LaTeX sin gastar llamadas a Claude, tamaño total versionado en git ~3.6 MB
+  (sin contar `node_modules`/`.next`, ya ignorados) sin binarios sueltos fuera de lugar.
+
+## Backlog (para más adelante, no bloqueante)
+
+Pendientes explícitamente pospuestos por el usuario el 2026-08-27 -- no se ha empezado
+ninguno de estos:
+
+1. **UI/UX refinada**: pulir la interfaz más allá de lo funcional (hoy es deliberadamente
+   utilitaria/Tailwind por defecto).
+2. **CLI/instalación más versátil para desarrolladores**: que arrancar el sistema sea lo
+   más parecido a "clona el repo y ya" (o un único comando tipo `npm install && npm run
+   setup`) en vez de los pasos manuales actuales de `## Arranque desde cero` (copiar
+   `.env`, instalar tectonic aparte, etc.).
+3. **Modo accesible para usuarios no técnicos**: explorar cómo alguien sin conocimientos
+   técnicos podría usar el sistema sin clonar un repo ni tocar una terminal (ej. un
+   despliegue web hosteado) -- **nota de diseño importante**: esto choca de frente con el
+   supuesto de diseño de la sección 3 del documento de arquitectura ("100% local, sin
+   servidor propio, tus datos no salen de tu máquina salvo hacia la API de Claude que tú
+   autorizas"), así que si se retoma esto habría que decidir explícitamente con el usuario
+   si se relaja ese supuesto (y qué implica para privacidad/datos) o si se busca una
+   alternativa que lo mantenga (ej. un instalador de un clic, no un servicio hosteado
+   multiusuario).

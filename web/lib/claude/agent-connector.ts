@@ -117,6 +117,9 @@ async function runAgentTask<T>(
           result.error,
         );
       }
+      // Ya se consumió y validó -- limpiar done/ para que no acumule
+      // indefinidamente un archivo por cada tarea procesada (son efímeros).
+      await rm(resultPath, { force: true });
       return result.data;
     }
     await sleep(POLL_INTERVAL_MS);

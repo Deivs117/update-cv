@@ -125,9 +125,7 @@ export const profileSchema = z.object({
 });
 
 export type Profile = z.infer<typeof profileSchema>;
-export type Bullet = z.infer<typeof bulletSchema>;
 export type Experience = z.infer<typeof experienceSchema>;
-export type Project = z.infer<typeof projectSchema>;
 
 /**
  * Igual que profileSchema pero con `meta` opcional: el editor web nunca
