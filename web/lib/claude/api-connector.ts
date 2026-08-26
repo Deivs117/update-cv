@@ -18,16 +18,24 @@ import {
   type TailoredContent,
 } from "@/lib/claude/connector.interface";
 import {
+  ANALYZE_JOB_SYSTEM_PROMPT,
+  buildAnalyzeJobUserPrompt,
+  buildTailorCVUserPrompt,
   EXTRACT_PROFILE_SYSTEM_PROMPT,
   EXTRACT_PROFILE_USER_PROMPT,
+  TAILOR_CV_SYSTEM_PROMPT,
 } from "@/lib/claude/prompts";
 import {
   profileDraftSchema,
   type ProfileDraft,
 } from "@/lib/validation/profile.zod";
+import { jobAnalysisSchema, tailorRawResponseSchema } from "@/lib/validation/generation.zod";
+import { buildCandidateContent, resolveTailoredContent } from "@/lib/tailoring";
 
 const DEFAULT_MODEL = "claude-sonnet-5";
 const EXTRACTION_MAX_TOKENS = 16000;
+const ANALYSIS_MAX_TOKENS = 2000;
+const TAILOR_MAX_TOKENS = 8000;
 
 function getApiKey(): string {
   const key = process.env.ANTHROPIC_API_KEY;
@@ -98,6 +106,42 @@ export class ApiConnector implements ClaudeConnector {
   constructor() {
     this.client = new Anthropic({ apiKey: getApiKey() });
     this.model = getModel();
+  }
+
+  /** Llama a Claude con un system+user prompt y devuelve el JSON parseado de la respuesta. */
+  private async askForJson(
+    systemPrompt: string,
+    userPrompt: string,
+    maxTokens: number,
+  ): Promise<unknown> {
+    let response: Anthropic.Message;
+    try {
+      response = await this.client.messages.create({
+        model: this.model,
+        max_tokens: maxTokens,
+        system: systemPrompt,
+        messages: [{ role: "user", content: userPrompt }],
+      });
+    } catch (err) {
+      throw new ClaudeConnectorError(
+        "Falló la llamada a la API de Claude. Revisa tu ANTHROPIC_API_KEY o la conexión de red.",
+        err,
+      );
+    }
+
+    const textBlock = response.content.find((block) => block.type === "text");
+    if (!textBlock || textBlock.type !== "text") {
+      throw new ClaudeConnectorError("Claude no devolvió contenido de texto en la respuesta.");
+    }
+
+    try {
+      return JSON.parse(extractJsonObject(textBlock.text));
+    } catch (err) {
+      throw new ClaudeConnectorError(
+        "No se pudo interpretar la respuesta de Claude como JSON válido (posiblemente truncada por max_tokens).",
+        err,
+      );
+    }
   }
 
   async extractProfile(input: ExtractProfileInput): Promise<ProfileDraft> {
@@ -201,16 +245,51 @@ export class ApiConnector implements ClaudeConnector {
     return result.data;
   }
 
-  async analyzeJob(): Promise<JobAnalysis> {
-    throw new ClaudeConnectorError(
-      "analyzeJob todavía no está implementado (llega en la Fase 4 del roadmap).",
+  async analyzeJob(input: { jobDescription: string }): Promise<JobAnalysis> {
+    if (!input.jobDescription.trim()) {
+      throw new ClaudeConnectorError("La descripción de la vacante está vacía.");
+    }
+
+    const json = await this.askForJson(
+      ANALYZE_JOB_SYSTEM_PROMPT,
+      buildAnalyzeJobUserPrompt(input.jobDescription),
+      ANALYSIS_MAX_TOKENS,
     );
+
+    const result = jobAnalysisSchema.safeParse(json);
+    if (!result.success) {
+      throw new ClaudeConnectorError(
+        `El análisis de vacante devuelto por Claude no cumple la forma esperada: ${result.error.message}`,
+        result.error,
+      );
+    }
+    return result.data;
   }
 
-  async tailorCV(_input: TailorCVInput): Promise<TailoredContent> {
-    throw new ClaudeConnectorError(
-      "tailorCV todavía no está implementado (llega en la Fase 4 del roadmap).",
+  async tailorCV(input: TailorCVInput): Promise<TailoredContent> {
+    const jobAnalysis = input.jobAnalysis ?? (await this.analyzeJob({ jobDescription: input.jobDescription }));
+    const candidateContent = buildCandidateContent(input.profile, input.language);
+
+    const json = await this.askForJson(
+      TAILOR_CV_SYSTEM_PROMPT,
+      buildTailorCVUserPrompt({
+        candidateContentJson: JSON.stringify(candidateContent),
+        jobDescription: input.jobDescription,
+        jobAnalysisJson: JSON.stringify(jobAnalysis),
+        recommendedMaxPages: input.maxPages,
+      }),
+      TAILOR_MAX_TOKENS,
     );
+
+    const result = tailorRawResponseSchema.safeParse(json);
+    if (!result.success) {
+      throw new ClaudeConnectorError(
+        `El contenido adaptado devuelto por Claude no cumple la forma esperada: ${result.error.message}`,
+        result.error,
+      );
+    }
+
+    return resolveTailoredContent(input.profile, input.language, result.data);
   }
 
   async generateCoverLetter(_input: GenerateCoverLetterInput): Promise<string> {

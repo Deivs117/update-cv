@@ -14,7 +14,7 @@ Ver `ARQUITECTURA_update-cv.md` para la especificación completa del sistema.
 - [x] Fase 1 — Extracción (demo)
 - [x] Fase 2 — Interfaz de perfil
 - [x] Fase 3 — Plantillas y compilación
-- [ ] Fase 4 — Motor de generación a medida
+- [x] Fase 4 — Motor de generación a medida
 - [ ] Fase 5 — Carta de presentación
 - [ ] Fase 6 — Modo Agente
 - [ ] Fase 7 — Pulido
@@ -29,6 +29,28 @@ Ver `ARQUITECTURA_update-cv.md` para la especificación completa del sistema.
 - **Plantilla visual secundaria con foto** (ver sección "Plantilla visual" más abajo) --
   prevista ya en el documento original como opción secundaria, ahora implementada.
 - **Campos bilingües adicionales** (ver sección "Campos bilingües" más abajo).
+
+## Notas de la Fase 4 (motor de generación a medida)
+
+- `/nueva-aplicacion`: wizard de 3 pasos (vacante → opciones → resultado).
+- `POST /api/nueva-aplicacion/analyze`: análisis de vacante (sección 9.2) -- devuelve skills
+  técnicas, soft skills, keywords de sector y seniority, siempre en el mismo idioma que el
+  texto de la vacante (clave para el matching léxico ATS).
+- `POST /api/nueva-aplicacion/generate`: orquesta todo el pipeline -- carga `profile.json`,
+  calcula la recomendación de páginas (`experience-years.ts`), llama a `tailorCV` (selección
+  y reescritura de bullets por relevancia a la vacante, sección 9.3), renderiza y compila
+  (ATS o visual), cuenta páginas, y escribe `apps/{empresa}-{puesto}-{fecha}/`.
+- `web/lib/tailoring.ts`: arma el "contenido candidato" (bullets con id, en el idioma
+  destino) que se envía a Claude, y **resuelve la respuesta de vuelta contra el perfil
+  real por id** -- company/rol/fechas nunca se toman de lo que Claude devuelve, solo el
+  texto reescrito y la selección/orden de bullets. Evita que una alucinación del modelo
+  corrompa datos estructurales.
+- `GET /api/apps/[...path]`: sirve `cv.pdf`/`cv.tex`/`job_description.txt` para la
+  previsualización embebida (restringido a `apps/`, sin path traversal).
+- Probado de punta a punta con una vacante real (Junior Software Engineer @ Power Digital):
+  análisis correcto en inglés, selección de bullets relevante sin inventar tecnologías que
+  el candidato no tiene, resultado de 2 páginas con la recomendación (1 página) mostrada
+  como retroalimentación no bloqueante.
 
 ## Requisitos
 

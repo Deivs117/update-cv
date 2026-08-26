@@ -3,6 +3,9 @@
     "full_name": "David Caicedo Samboni",
     "headline_es": "Ingeniero Mecatrónico con Especialización en IA",
     "headline_en": "Mechatronics Engineer with a Specialization in AI",
+    "age": 21,
+    "photo_path": "data/raw/images/foto_perfil.jpg",
+    "location": "Cali, Valle del Cauca",
     "phone": "+57 (310) 331 9477",
     "email": "davidcaicedosamboni@gmail.com",
     "website": "https://deivs117.github.io/portfolio/",
@@ -41,6 +44,7 @@
       "institution": "Universidad Autónoma de Occidente",
       "degree_es": "Ingeniería Mecatrónica",
       "degree_en": "Mechatronics Engineering",
+      "start_date": "2021-07",
       "end_date": "2026-01"
     },
     {
@@ -48,7 +52,8 @@
       "institution": "Universidad Autónoma de Occidente",
       "degree_es": "Especialización en Inteligencia Artificial",
       "degree_en": "Specialization in Artificial Intelligence",
-      "end_date": "2026-01"
+      "start_date": "2025-08",
+      "end_date": "2026-05"
     }
   ],
   "experience": [
@@ -334,5 +339,9 @@
     "ISO/IEC 42001",
     "ISO 13849-1",
     "IEC 62443"
-  ]
+  ],
+  "meta": {
+    "schema_version": "1.0",
+    "last_updated": "2026-08-26T01:37:36.264Z"
+  }
 }

@@ -47,3 +47,81 @@ Reglas importantes:
 
 export const EXTRACT_PROFILE_USER_PROMPT =
   "Extrae el perfil canónico de este CV siguiendo exactamente las instrucciones del system prompt. Responde solo con el JSON.";
+
+/** Sección 9.2 — Paso 1: análisis de la vacante. */
+export const ANALYZE_JOB_SYSTEM_PROMPT = `Eres un asistente que analiza descripciones de vacantes de empleo para extraer información estructurada útil para adaptar un CV.
+
+Vas a recibir el texto completo de una vacante. Devuelve ÚNICAMENTE un objeto JSON con esta forma:
+
+{
+  "required_technical_skills": string[],
+  "soft_skills": string[],
+  "sector_keywords": string[],
+  "seniority": string
+}
+
+Reglas:
+- "required_technical_skills": tecnologías, herramientas, lenguajes, frameworks, certificaciones técnicas mencionadas o claramente implícitas (en minúsculas cuando aplique, ej. "python", "aws").
+- "soft_skills": habilidades blandas pedidas o implícitas (ej. "liderazgo", "comunicación").
+- "sector_keywords": palabras clave del sector/empresa/dominio (ej. "fintech", "manufactura", "salud", nombre de metodologías como "scrum").
+- "seniority": nivel esperado en una palabra o frase corta (ej. "junior", "senior", "lead", "sin especificar").
+- MUY IMPORTANTE: todo el texto de los arrays (skills, keywords, seniority) debe estar en el MISMO IDIOMA que el texto de la vacante recibida (si la vacante está en inglés, responde en inglés; si está en español, responde en español). Esto es clave para el matching léxico ATS posterior -- nunca traduzcas al español por defecto.
+- No inventes requisitos que no estén en el texto. Si la vacante es muy corta o ambigua, es válido devolver arrays cortos.
+- No incluyas explicaciones ni markdown. Responde ÚNICAMENTE con el JSON.`;
+
+export function buildAnalyzeJobUserPrompt(jobDescription: string): string {
+  return `Analiza esta vacante y responde solo con el JSON:\n\n${jobDescription}`;
+}
+
+/** Sección 9.3 — Paso 2: selección y reescritura de contenido. */
+export const TAILOR_CV_SYSTEM_PROMPT = `Eres un asistente experto en redacción de CVs ATS-friendly. Vas a recibir:
+1. El contenido disponible de un candidato (resumen, experiencia con bullets, proyectos, skills, soft skills), cada bullet con un "id" estable.
+2. El análisis de una vacante específica (skills requeridas, soft skills, keywords de sector, seniority).
+3. Un número recomendado de páginas objetivo (orientativo, no obligatorio de cumplir de forma exacta).
+
+Tu tarea: seleccionar y reescribir el contenido más relevante para ESA vacante específica, maximizando coincidencia léxica con sus keywords (clave para ATS), sin inventar logros ni tecnologías que el candidato no tiene.
+
+Devuelve ÚNICAMENTE un objeto JSON con esta forma:
+
+{
+  "summary": string,
+  "experience": [{
+    "id": string,
+    "bullets": [{ "id": string, "text": string, "keywords": string[] }]
+  }],
+  "projects": [{
+    "id": string,
+    "bullets": [{ "id": string, "text": string, "keywords": string[] }]
+  }],
+  "technical_skills": [{ "category": string, "items": string[] }],
+  "soft_skills": string[]
+}
+
+Reglas:
+- "id" en experience/projects debe ser exactamente uno de los ids recibidos en el contenido disponible -- no inventes ids nuevos. Omite por completo las experiencias/proyectos que decidas no incluir (no los listes con bullets vacíos).
+- Cada bullet en la salida debe referenciar el "id" de un bullet real recibido (puedes omitir bullets de baja relevancia para esta vacante, pero no inventar bullets nuevos). Puedes reescribir el "text" para alinear el lenguaje con la vacante (mismo idioma que el contenido recibido, sin traducir), pero sin inventar logros, tecnologías o métricas que no estén en el bullet original.
+- Prioriza orden: primero las experiencias/proyectos/bullets más relevantes para esta vacante específica.
+- "technical_skills" y "soft_skills": reordena y filtra (puedes omitir grupos/items irrelevantes) los recibidos, priorizando lo que pide la vacante. No inventes skills nuevas.
+- "summary": reescribe el resumen del candidato (2-4 líneas) enfatizando su fit con esta vacante específica, en el mismo idioma del contenido recibido.
+- El número de páginas recomendado es orientativo: si el contenido disponible es mucho más extenso que lo que cabría razonablemente, prioriza fuertemente lo más relevante, pero NO es obligatorio recortar todo a la fuerza -- el sistema mostrará al usuario cuántas páginas quedó el resultado final para que él decida si recortar más.
+- No incluyas explicaciones ni markdown. Responde ÚNICAMENTE con el JSON.`;
+
+export function buildTailorCVUserPrompt(input: {
+  candidateContentJson: string;
+  jobDescription: string;
+  jobAnalysisJson: string;
+  recommendedMaxPages: number;
+}): string {
+  return `Contenido disponible del candidato (JSON):
+${input.candidateContentJson}
+
+Análisis de la vacante (JSON):
+${input.jobAnalysisJson}
+
+Texto completo de la vacante (para contexto adicional de lenguaje/tono):
+${input.jobDescription}
+
+Número de páginas recomendado (orientativo): ${input.recommendedMaxPages}
+
+Responde solo con el JSON del contenido adaptado.`;
+}
