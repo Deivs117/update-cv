@@ -100,6 +100,10 @@ npm install
 # Levantar el servidor de desarrollo
 npm run dev
 # Abre http://localhost:3000
+
+# (Opcional) Si vas a usar modo Agente (sin ANTHROPIC_API_KEY), en OTRA
+# terminal, para que las tareas se procesen solas sin pedírmelo cada vez:
+npm run agent:watch
 ```
 
 ## Tus propios datos (si no eres David)
@@ -244,3 +248,48 @@ Los nombres propios (`company`, `institution`, `name` de empresa) NO se traducen
   la misma carpeta (verificado que no duplica), y el editor avanzado -- incluyendo forzar un
   error de compilación real (`\undefinedcommandxyz`) para confirmar que el mensaje de error
   llega completo y legible a la UI, luego restaurado sin dejar la aplicación rota.
+
+## Mejoras post-Fase 7 (2026-08-27)
+
+**1. Certificaciones seleccionadas por vacante + soft skills reescritas.** `tailorCV`
+(sección 9.3) ahora recibe también `certifications_compliance` en el contenido del
+candidato y las trata igual que el resto: selecciona SOLO las relevantes para esa vacante
+específica (ej. no mostrar una certificación de diseño CAD en una vacante de backend) en
+vez de mostrar siempre todas las del perfil. `soft_skills` pasó de solo "filtrar/reordenar"
+a poder **reescribirse** con el mismo tono/vocabulario de la vacante, siempre que siga
+representando una habilidad real del candidato (mismo guardrail anti-invención que ya
+existía para bullets: `tailoring.ts` descarta cualquier certificación que Claude devuelva y
+que no exista literalmente en el perfil real). Probado en modo API con una vacante de
+backend contra el perfil real (que solo tenía una certificación de CAD): el resultado la
+excluyó consistentemente en 3 corridas, y las soft skills se reescribieron con vocabulario
+de la vacante ("colaboración en equipos multidisciplinarios", etc.).
+
+**2. Modo Agente no bloqueante + watcher automático.** Dos problemas de UX reales del modo
+Agente original: (a) la UI mantenía la petición HTTP abierta hasta 15 min esperando a que el
+usuario, en otra terminal, le pidiera a Claude Code que procesara la tarea; (b) había que
+repetir ese pedido manualmente por cada paso del flujo (analizar vacante, luego generar).
+Se resolvió con dos piezas (decisión tomada con el usuario vía `AskUserQuestion`):
+- **`web/lib/jobs.ts`**: cola de jobs en memoria del proceso de `next dev`/`next start`.
+  `POST /api/nueva-aplicacion/{analyze,generate}` y `POST /api/apps/[slug]/regenerate` ya
+  no bloquean -- encolan el trabajo, responden de inmediato con `{ jobId }`, y el cliente
+  hace polling a `GET /api/jobs/[jobId]` (`web/lib/client/poll-job.ts`) viendo el progreso
+  en vivo (`stage`: "Analizando...", "Adaptando tu contenido...", "Compilando el PDF...",
+  etc.) sin tener la pestaña "colgada". Es intencionalmente en memoria (no persistente):
+  encaja con los supuestos de diseño de un sistema 100% local de un solo usuario (sección
+  3) -- si el servidor se reinicia a mitad de un job, se pierde y el cliente lo ve como un
+  404 al pollear, no como un error silencioso.
+- **`npm run agent:watch`** (`web/scripts/agent-watch.ts`): un watcher que vigila
+  `.claude-tasks/pending/` y usa el CLI headless de Claude Code (`claude -p
+  --permission-mode acceptEdits --allowedTools "Read Write Glob Grep"`) para procesar cada
+  tarea apenas aparece, una detrás de otra, sin que el usuario tenga que volver a pedírmelo
+  cada vez -- se deja corriendo en una terminal aparte mientras se generan cuantas
+  aplicaciones se quiera desde la UI. Sigue las mismas instrucciones de `CLAUDE.md` (única
+  fuente de verdad, no se duplicó criterio). Nuevas variables en `.env.example`:
+  `AGENT_WATCH_POLL_INTERVAL_MS`, `AGENT_WATCH_TASK_TIMEOUT_MS`, `AGENT_WATCH_CLAUDE_BIN`.
+  El flujo manual (pedirle a Claude Code "procesa las tareas pendientes" en una terminal)
+  se mantiene disponible como alternativa -- el watcher es opcional, no reemplaza el
+  contrato del buzón.
+- Probado de punta a punta: `POST /api/nueva-aplicacion/analyze` en modo API devuelve
+  `jobId` de inmediato y el polling refleja `running` → `done` con el resultado correcto;
+  una tarea real escrita a mano en `.claude-tasks/pending/` fue recogida y resuelta por
+  `agent:watch` en ~12s usando `claude -p` de verdad, sin intervención manual.

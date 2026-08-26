@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
-import { getConnector, type ClaudeMode } from "@/lib/claude/get-connector";
+import { getConnector, resolveClaudeMode, type ClaudeMode } from "@/lib/claude/get-connector";
 import { ClaudeConnectorError } from "@/lib/claude/connector.interface";
+import { startJob } from "@/lib/jobs";
 
-/** Sección 9.2 — Paso 1: análisis de la vacante (para mostrar en la UI antes de generar). */
+/**
+ * Sección 9.2 — Paso 1: análisis de la vacante (para mostrar en la UI antes
+ * de generar). No bloqueante (ver web/lib/jobs.ts): responde de inmediato
+ * con { jobId } y el cliente hace polling a GET /api/jobs/[jobId].
+ */
 export async function POST(request: Request) {
   let body: unknown;
   try {
@@ -21,18 +26,22 @@ export async function POST(request: Request) {
 
   const rawMode = (body as { claudeMode?: unknown })?.claudeMode;
   const mode: ClaudeMode | undefined = rawMode === "api" || rawMode === "agent" ? rawMode : undefined;
+  const modeLabel =
+    resolveClaudeMode(mode) === "agent"
+      ? " (modo Agente: si tienes `npm run agent:watch` corriendo se procesa solo; si no, pídele a Claude Code que procese las tareas pendientes)"
+      : "";
 
-  try {
-    const connector = getConnector(mode);
-    const analysis = await connector.analyzeJob({ jobDescription });
-    return NextResponse.json({ analysis });
-  } catch (err) {
-    if (err instanceof ClaudeConnectorError) {
-      return NextResponse.json({ error: err.message }, { status: 502 });
-    }
-    return NextResponse.json(
-      { error: "Error inesperado analizando la vacante." },
-      { status: 500 },
-    );
-  }
+  const jobId = startJob(
+    async (setStage) => {
+      setStage(`Analizando la vacante con Claude...${modeLabel}`);
+      const connector = getConnector(mode);
+      return connector.analyzeJob({ jobDescription });
+    },
+    (err) => {
+      if (err instanceof ClaudeConnectorError) return { message: err.message, status: 502 };
+      return { message: "Error inesperado analizando la vacante.", status: 500 };
+    },
+  );
+
+  return NextResponse.json({ jobId }, { status: 202 });
 }

@@ -70,14 +70,19 @@ por defecto al español.
 **Entrada:**
 - `candidate_content`: JSON con el contenido disponible del candidato (`summary`,
   `experience[]`/`projects[]` con bullets que tienen `id`, `text`, `keywords`,
-  `technical_skills[]`, `soft_skills[]`) — ya resuelto al idioma destino.
+  `technical_skills[]`, `soft_skills[]`, `certifications_compliance[]`) — ya resuelto al
+  idioma destino.
 - `job_description`, `job_analysis`, `recommended_max_pages`, `language`.
 
 **Qué hacer:** sigue `TAILOR_CV_SYSTEM_PROMPT`. Selecciona y reescribe bullets relevantes
 para esa vacante específica **sin inventar logros/tecnologías** que no estén en el
-contenido recibido, referenciando siempre los `id` reales recibidos. El número de páginas
-recomendado es orientativo, no obligatorio de cumplir a la fuerza. Todo el texto que
-generes debe estar en `language` (no mezclar idiomas, sin importar el idioma de la vacante).
+contenido recibido, referenciando siempre los `id` reales recibidos. `soft_skills` se puede
+reescribir/reformular (mismo tono que pida la vacante) pero sin inventar habilidades que el
+candidato no reportó. `certifications_compliance` se selecciona (subconjunto textual EXACTO
+de lo recibido, sin reescribir) según relevancia para el puesto — ej. no incluir una
+certificación de diseño CAD en una vacante de backend. El número de páginas recomendado es
+orientativo, no obligatorio de cumplir a la fuerza. Todo el texto que generes debe estar en
+`language` (no mezclar idiomas, sin importar el idioma de la vacante).
 
 **Salida esperada:**
 ```json
@@ -86,7 +91,8 @@ generes debe estar en `language` (no mezclar idiomas, sin importar el idioma de 
   "experience": [{ "id": string, "bullets": [{ "id": string, "text": string, "keywords": string[] }] }],
   "projects": [{ "id": string, "bullets": [{ "id": string, "text": string, "keywords": string[] }] }],
   "technical_skills": [{ "category": string, "items": string[] }],
-  "soft_skills": string[]
+  "soft_skills": string[],
+  "certifications_compliance": string[]
 }
 ```
 

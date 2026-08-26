@@ -2,18 +2,18 @@ import { NextResponse } from "next/server";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { APPS_DIR, type ApplicationMetadata } from "@/lib/apps-io";
-import { ClaudeConnectorError } from "@/lib/claude/connector.interface";
 import type { ClaudeMode } from "@/lib/claude/get-connector";
-import { ProfileIOError } from "@/lib/profile-io";
-import { LatexCompileError } from "@/lib/latex/compile";
-import { PageCountError } from "@/lib/latex/page-count";
-import { ApplicationGenerationError, generateApplication } from "@/lib/generation-pipeline";
+import { generateApplication, mapGenerationError } from "@/lib/generation-pipeline";
+import { startJob } from "@/lib/jobs";
 
 /**
  * Regenera una aplicación existente (Fase 7): re-corre todo el pipeline
  * (análisis + selección/reescritura + render + compile) con el perfil
  * ACTUAL, reusando la misma carpeta apps/{slug}/ en vez de crear una nueva
  * con la fecha de hoy -- útil después de editar tu perfil.
+ *
+ * No bloqueante (ver web/lib/jobs.ts): responde con { jobId } de inmediato,
+ * el cliente hace polling a GET /api/jobs/[jobId].
  */
 export async function POST(request: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -47,33 +47,24 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
     claudeMode = metadata.claudeMode;
   }
 
-  try {
-    const result = await generateApplication({
-      jobDescription,
-      company: metadata.company,
-      role: metadata.role,
-      language: metadata.language,
-      templateVariant: metadata.templateVariant,
-      coverLetter: {
-        enabled: metadata.coverLetter !== "none",
-        format: metadata.coverLetter === "text" ? "text" : "pdf",
-      },
-      claudeMode,
-      reuseDir: { dir, slug },
-    });
-    return NextResponse.json(result);
-  } catch (err) {
-    if (err instanceof ApplicationGenerationError) {
-      return NextResponse.json({ error: err.message }, { status: err.status });
-    }
-    if (
-      err instanceof ClaudeConnectorError ||
-      err instanceof LatexCompileError ||
-      err instanceof PageCountError ||
-      err instanceof ProfileIOError
-    ) {
-      return NextResponse.json({ error: err.message }, { status: 502 });
-    }
-    return NextResponse.json({ error: "Error inesperado regenerando el CV." }, { status: 500 });
-  }
+  const jobId = startJob(
+    (setStage) =>
+      generateApplication({
+        jobDescription,
+        company: metadata.company,
+        role: metadata.role,
+        language: metadata.language,
+        templateVariant: metadata.templateVariant,
+        coverLetter: {
+          enabled: metadata.coverLetter !== "none",
+          format: metadata.coverLetter === "text" ? "text" : "pdf",
+        },
+        claudeMode,
+        reuseDir: { dir, slug },
+        onProgress: setStage,
+      }),
+    mapGenerationError,
+  );
+
+  return NextResponse.json({ jobId }, { status: 202 });
 }

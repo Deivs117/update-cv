@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { JobAnalysis, Language } from "@/lib/claude/connector.interface";
+import { pollJob } from "@/lib/client/poll-job";
 
 type Step = "vacante" | "opciones" | "resultado";
 
@@ -31,12 +32,14 @@ export default function NuevaAplicacionPage() {
   const [jobAnalysis, setJobAnalysis] = useState<JobAnalysis | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [stage, setStage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<GenerateResult | null>(null);
 
   async function handleAnalyze() {
     setError(null);
     setAnalyzing(true);
+    setStage(null);
     try {
       const res = await fetch("/api/nueva-aplicacion/analyze", {
         method: "POST",
@@ -45,18 +48,21 @@ export default function NuevaAplicacionPage() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error);
-      setJobAnalysis(json.analysis);
+      const analysis = await pollJob<JobAnalysis>(json.jobId, setStage);
+      setJobAnalysis(analysis);
       setStep("opciones");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falló el análisis de la vacante.");
     } finally {
       setAnalyzing(false);
+      setStage(null);
     }
   }
 
   async function handleGenerate() {
     setError(null);
     setGenerating(true);
+    setStage(null);
     setStep("resultado");
     try {
       const res = await fetch("/api/nueva-aplicacion/generate", {
@@ -75,11 +81,13 @@ export default function NuevaAplicacionPage() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error);
-      setResult(json);
+      const generated = await pollJob<GenerateResult>(json.jobId, setStage);
+      setResult(generated);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falló la generación del CV.");
     } finally {
       setGenerating(false);
+      setStage(null);
     }
   }
 
@@ -141,8 +149,9 @@ export default function NuevaAplicacionPage() {
             </label>
             <label className="flex items-center gap-2">
               <input type="radio" checked={claudeMode === "agent"} onChange={() => setClaudeMode("agent")} />
-              Agente (sin API key -- la petición espera hasta que proceses las
-              tareas con Claude Code en una terminal, ver CLAUDE.md)
+              Agente (sin API key -- corre <code>npm run agent:watch</code> en
+              una terminal aparte y se procesa solo; si no, pídele a Claude
+              Code que procese las tareas pendientes)
             </label>
           </fieldset>
 
@@ -162,7 +171,7 @@ export default function NuevaAplicacionPage() {
             disabled={analyzing || !jobDescription.trim() || !company.trim() || !role.trim()}
             className="self-start rounded-md bg-zinc-900 px-4 py-2 text-sm text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
           >
-            {analyzing ? "Analizando..." : "Analizar vacante"}
+            {analyzing ? (stage ?? "Analizando...") : "Analizar vacante"}
           </button>
         </div>
       )}
@@ -284,9 +293,10 @@ export default function NuevaAplicacionPage() {
       {step === "resultado" && (
         <div className="flex flex-col gap-4">
           {generating && (
-            <p className="text-sm text-zinc-500">
-              Generando... (análisis, selección de contenido, compilación LaTeX)
-            </p>
+            <div className="flex items-center gap-2 text-sm text-zinc-500">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-zinc-400" />
+              {stage ?? "Generando..."}
+            </div>
           )}
 
           {result && (

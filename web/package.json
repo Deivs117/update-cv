@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "extract-profile": "tsx scripts/extract-profile.ts",
-    "test-latex": "tsx scripts/test-latex-pipeline.ts"
+    "test-latex": "tsx scripts/test-latex-pipeline.ts",
+    "agent:watch": "tsx scripts/agent-watch.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.120.0",

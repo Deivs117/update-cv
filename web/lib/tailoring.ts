@@ -26,6 +26,7 @@ export interface CandidateContent {
   projects: CandidateEntry[];
   technical_skills: { category: string; items: string[] }[];
   soft_skills: string[];
+  certifications_compliance: string[];
 }
 
 /** Perfil resuelto al idioma destino, con ids de bullet preservados -- lo que Claude ve. */
@@ -56,6 +57,7 @@ export function buildCandidateContent(profile: Profile, language: Language): Can
       items: s.items,
     })),
     soft_skills: (profile.soft_skills ?? []).map(text),
+    certifications_compliance: profile.certifications_compliance ?? [],
   };
 }
 
@@ -72,6 +74,7 @@ export function resolveTailoredContent(
 ): TailoredContent {
   const experienceById = new Map((profile.experience ?? []).map((e) => [e.id, e]));
   const projectById = new Map((profile.projects ?? []).map((p) => [p.id, p]));
+  const validCertifications = new Set(profile.certifications_compliance ?? []);
 
   const experience = raw.experience.flatMap((entry) => {
     const source = experienceById.get(entry.id);
@@ -114,5 +117,11 @@ export function resolveTailoredContent(
     projects,
     technical_skills: raw.technical_skills,
     soft_skills: raw.soft_skills,
+    // Nunca confiamos en que Claude solo devuelva certificaciones reales --
+    // se filtra contra las que existen de verdad en el perfil (mismo criterio
+    // que ids de experience/projects más arriba).
+    certifications_compliance: raw.certifications_compliance.filter((c) =>
+      validCertifications.has(c),
+    ),
   };
 }

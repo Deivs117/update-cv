@@ -31,6 +31,7 @@ export const tailorRawResponseSchema = z.object({
     .array(z.object({ category: z.string(), items: z.array(z.string()) }))
     .default([]),
   soft_skills: z.array(z.string()).default([]),
+  certifications_compliance: z.array(z.string()).default([]),
 });
 
 export type TailorRawResponse = z.infer<typeof tailorRawResponseSchema>;

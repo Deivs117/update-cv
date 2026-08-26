@@ -51,6 +51,7 @@ export interface TailoredContent {
   projects: TailoredProject[];
   technical_skills: { category: string; items: string[] }[];
   soft_skills: string[];
+  certifications_compliance: string[];
 }
 
 export interface TailorCVInput {

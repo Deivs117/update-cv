@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import type { ApplicationMetadata } from "@/lib/apps-io";
+import { pollJob } from "@/lib/client/poll-job";
 
 type Banner = { kind: "info" | "success" | "error"; text: string } | null;
 
@@ -17,6 +18,7 @@ export default function ApplicationDetailPage() {
   const [loading, setLoading] = useState(true);
   const [banner, setBanner] = useState<Banner>(null);
   const [regenerating, setRegenerating] = useState(false);
+  const [regenerateStage, setRegenerateStage] = useState<string | null>(null);
   const [recompiling, setRecompiling] = useState<"cv" | "cover_letter" | null>(null);
   const [cacheBust, setCacheBust] = useState(0);
 
@@ -59,18 +61,23 @@ export default function ApplicationDetailPage() {
 
   async function handleRegenerate() {
     setRegenerating(true);
+    setRegenerateStage(null);
     setBanner(null);
     try {
       const res = await fetch(`/api/apps/${slug}/regenerate`, { method: "POST" });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error);
-      setMetadata((prev) => (prev ? { ...prev, pages: json.pages } : prev));
+      const generated = await pollJob<{ pages: number; recommendedMaxPages: number }>(
+        json.jobId,
+        setRegenerateStage,
+      );
+      setMetadata((prev) => (prev ? { ...prev, pages: generated.pages } : prev));
       const texRes = await fetch(`/api/apps/${slug}/cv.tex`);
       if (texRes.ok) setCvTex(await texRes.text());
       setCacheBust(Date.now());
       setBanner({
         kind: "success",
-        text: `Regenerado con tu perfil actual: ${json.pages} página${json.pages === 1 ? "" : "s"} (se recomiendan ${json.recommendedMaxPages}).`,
+        text: `Regenerado con tu perfil actual: ${generated.pages} página${generated.pages === 1 ? "" : "s"} (se recomiendan ${generated.recommendedMaxPages}).`,
       });
     } catch (err) {
       setBanner({
@@ -79,6 +86,7 @@ export default function ApplicationDetailPage() {
       });
     } finally {
       setRegenerating(false);
+      setRegenerateStage(null);
     }
   }
 
@@ -156,7 +164,7 @@ export default function ApplicationDetailPage() {
         className="self-start rounded-md bg-zinc-900 px-4 py-2 text-sm text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
         title="Vuelve a correr todo el pipeline (análisis + selección + compilación) con tu perfil actual"
       >
-        {regenerating ? "Regenerando..." : "Regenerar con mi perfil actual"}
+        {regenerating ? (regenerateStage ?? "Regenerando...") : "Regenerar con mi perfil actual"}
       </button>
 
       <iframe

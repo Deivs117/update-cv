@@ -75,7 +75,7 @@ export function buildAnalyzeJobUserPrompt(jobDescription: string): string {
 
 /** Sección 9.3 — Paso 2: selección y reescritura de contenido. */
 export const TAILOR_CV_SYSTEM_PROMPT = `Eres un asistente experto en redacción de CVs ATS-friendly. Vas a recibir:
-1. El contenido disponible de un candidato (resumen, experiencia con bullets, proyectos, skills, soft skills), cada bullet con un "id" estable.
+1. El contenido disponible de un candidato (resumen, experiencia con bullets, proyectos, skills, soft skills, certificaciones/compliance), cada bullet con un "id" estable.
 2. El análisis de una vacante específica (skills requeridas, soft skills, keywords de sector, seniority).
 3. Un número recomendado de páginas objetivo (orientativo, no obligatorio de cumplir de forma exacta).
 
@@ -94,14 +94,17 @@ Devuelve ÚNICAMENTE un objeto JSON con esta forma:
     "bullets": [{ "id": string, "text": string, "keywords": string[] }]
   }],
   "technical_skills": [{ "category": string, "items": string[] }],
-  "soft_skills": string[]
+  "soft_skills": string[],
+  "certifications_compliance": string[]
 }
 
 Reglas:
 - "id" en experience/projects debe ser exactamente uno de los ids recibidos en el contenido disponible -- no inventes ids nuevos. Omite por completo las experiencias/proyectos que decidas no incluir (no los listes con bullets vacíos).
 - Cada bullet en la salida debe referenciar el "id" de un bullet real recibido (puedes omitir bullets de baja relevancia para esta vacante, pero no inventar bullets nuevos). Puedes reescribir el "text" para alinear el lenguaje con la vacante (mismo idioma que el contenido recibido, sin traducir), pero sin inventar logros, tecnologías o métricas que no estén en el bullet original.
 - Prioriza orden: primero las experiencias/proyectos/bullets más relevantes para esta vacante específica.
-- "technical_skills" y "soft_skills": reordena y filtra (puedes omitir grupos/items irrelevantes) los recibidos, priorizando lo que pide la vacante. No inventes skills nuevas.
+- "technical_skills": reordena y filtra (puedes omitir grupos/items irrelevantes) los recibidos, priorizando lo que pide la vacante. No inventes skills nuevas.
+- "soft_skills": elige y reescribe (con las mismas palabras/tono que usa la vacante cuando tenga sentido, ej. "trabajo en equipo" -> "colaboración en equipos multidisciplinarios" si la vacante lo pide así) las habilidades blandas del candidato más relevantes para esta vacante -- puedes reformular la redacción, pero cada una debe seguir representando una habilidad real de las recibidas, no inventar habilidades que el candidato no reportó.
+- "certifications_compliance": de la lista recibida, incluye ÚNICAMENTE las certificaciones/formaciones de compliance relevantes para esta vacante específica (ej. no muestres una certificación de diseño CAD para una vacante de desarrollo backend). Antes de incluir cada una, pregúntate: ¿un reclutador de ESTE puesto específico la reconocería como relevante? Si la respuesta es no o es dudosa, no la incluyas -- ante la duda, prioriza un CV más enfocado sobre uno que muestre todo. Debes devolver cada ítem EXACTAMENTE igual (mismo texto) a como llegó en la lista recibida -- no inventes certificaciones nuevas ni reescribas su texto. Si ninguna es relevante, devuelve un array vacío (es un resultado válido y esperado).
 - "summary": reescribe el resumen del candidato (2-4 líneas) enfatizando su fit con esta vacante específica, en el mismo idioma del contenido recibido.
 - El número de páginas recomendado es orientativo: si el contenido disponible es mucho más extenso que lo que cabría razonablemente, prioriza fuertemente lo más relevante, pero NO es obligatorio recortar todo a la fuerza -- el sistema mostrará al usuario cuántas páginas quedó el resultado final para que él decida si recortar más.
 - No incluyas explicaciones ni markdown. Responde ÚNICAMENTE con el JSON.`;

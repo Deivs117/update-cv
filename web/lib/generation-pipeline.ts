@@ -7,16 +7,16 @@
 import path from "node:path";
 import { writeFile } from "node:fs/promises";
 import { getConnector, resolveClaudeMode, type ClaudeMode } from "@/lib/claude/get-connector";
-import type { JobAnalysis, Language } from "@/lib/claude/connector.interface";
+import { ClaudeConnectorError, type JobAnalysis, type Language } from "@/lib/claude/connector.interface";
 import { hasMinimumViableContent } from "@/lib/validation/profile.zod";
-import { readProfile, REPO_ROOT } from "@/lib/profile-io";
+import { readProfile, REPO_ROOT, ProfileIOError } from "@/lib/profile-io";
 import { getPageRecommendation } from "@/lib/experience-years";
 import { buildFinalCVData } from "@/lib/latex/build-final-cvdata";
 import { renderCV } from "@/lib/latex/render";
 import { renderVisualCV, prepareVisualAssets } from "@/lib/latex/render-visual";
 import { renderCoverLetter } from "@/lib/latex/render-cover-letter";
-import { compileLatex } from "@/lib/latex/compile";
-import { countPdfPages } from "@/lib/latex/page-count";
+import { compileLatex, LatexCompileError } from "@/lib/latex/compile";
+import { countPdfPages, PageCountError } from "@/lib/latex/page-count";
 import { createApplicationDir, writeApplicationOutputs, type ApplicationMetadata } from "@/lib/apps-io";
 
 export type TemplateVariant = "ats" | "visual";
@@ -38,6 +38,8 @@ export interface GenerateApplicationInput {
   claudeMode?: ClaudeMode;
   /** Fase 7: al regenerar, reusa la carpeta existente en vez de crear una con la fecha de hoy. */
   reuseDir?: { dir: string; slug: string };
+  /** Reporta el paso actual (para UI no bloqueante -- ver web/lib/jobs.ts). */
+  onProgress?: (stage: string) => void;
 }
 
 export interface GenerateApplicationResult {
@@ -80,10 +82,17 @@ export async function generateApplication(
   }
 
   const { experienceYears, recommendedMaxPages } = getPageRecommendation(profile.experience ?? []);
+  const onProgress = input.onProgress ?? (() => {});
+  const modeLabel = resolveClaudeMode(input.claudeMode) === "agent"
+    ? " (modo Agente: si tienes `npm run agent:watch` corriendo se procesa solo; si no, pídele a Claude Code que procese las tareas pendientes)"
+    : "";
 
   const connector = getConnector(input.claudeMode);
+  onProgress(input.jobAnalysis ? "Preparando el análisis de la vacante..." : `Analizando la vacante con Claude...${modeLabel}`);
   const jobAnalysis =
     input.jobAnalysis ?? (await connector.analyzeJob({ jobDescription: input.jobDescription }));
+
+  onProgress(`Adaptando tu contenido a esta vacante con Claude...${modeLabel}`);
   const tailored = await connector.tailorCV({
     profile,
     jobDescription: input.jobDescription,
@@ -92,6 +101,7 @@ export async function generateApplication(
     jobAnalysis,
   });
 
+  onProgress("Generando el documento LaTeX...");
   const cvData = buildFinalCVData(profile, input.language, tailored);
   const { dir, slug } =
     input.reuseDir ?? (await createApplicationDir(input.company, input.role));
@@ -112,6 +122,7 @@ export async function generateApplication(
   }
 
   await writeFile(path.join(dir, "cv.tex"), tex, "utf-8");
+  onProgress("Compilando el PDF del CV...");
   const { pdfPath } = await compileLatex("cv.tex", dir);
   const pages = await countPdfPages(pdfPath);
 
@@ -120,6 +131,7 @@ export async function generateApplication(
   let coverLetterUrl: string | undefined;
   let coverLetterText: string | undefined;
   if (input.coverLetter.enabled) {
+    onProgress(`Escribiendo la carta de presentación con Claude...${modeLabel}`);
     const letterBody = await connector.generateCoverLetter({
       profile,
       jobDescription: input.jobDescription,
@@ -140,11 +152,13 @@ export async function generateApplication(
         bodyText: letterBody,
       });
       await writeFile(path.join(dir, "cover_letter.tex"), letterTex, "utf-8");
+      onProgress("Compilando el PDF de la carta de presentación...");
       await compileLatex("cover_letter.tex", dir);
       coverLetterUrl = `/api/apps/${slug}/cover_letter.pdf`;
     }
   }
 
+  onProgress("Guardando la aplicación...");
   const metadata: ApplicationMetadata = {
     company: input.company,
     role: input.role,
@@ -170,4 +184,22 @@ export async function generateApplication(
     coverLetterUrl,
     coverLetterText,
   };
+}
+
+/**
+ * Traduce cualquier error conocido del pipeline (o de analyzeJob) a un
+ * mensaje + status HTTP entendible, para usar tanto en rutas síncronas como
+ * dentro de un job en segundo plano (ver web/lib/jobs.ts).
+ */
+export function mapGenerationError(err: unknown): { message: string; status: number } {
+  if (err instanceof ApplicationGenerationError) return { message: err.message, status: err.status };
+  if (
+    err instanceof ClaudeConnectorError ||
+    err instanceof LatexCompileError ||
+    err instanceof PageCountError ||
+    err instanceof ProfileIOError
+  ) {
+    return { message: err.message, status: 502 };
+  }
+  return { message: "Error inesperado generando el CV.", status: 500 };
 }

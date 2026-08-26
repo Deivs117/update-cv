@@ -1,15 +1,13 @@
 import { NextResponse } from "next/server";
 import type { ClaudeMode } from "@/lib/claude/get-connector";
-import { ClaudeConnectorError, type JobAnalysis, type Language } from "@/lib/claude/connector.interface";
-import { ProfileIOError } from "@/lib/profile-io";
-import { LatexCompileError } from "@/lib/latex/compile";
-import { PageCountError } from "@/lib/latex/page-count";
+import type { JobAnalysis, Language } from "@/lib/claude/connector.interface";
 import {
-  ApplicationGenerationError,
   generateApplication,
+  mapGenerationError,
   type CoverLetterOptions,
   type TemplateVariant,
 } from "@/lib/generation-pipeline";
+import { startJob } from "@/lib/jobs";
 
 interface GenerateRequestBody {
   jobDescription: string;
@@ -56,6 +54,13 @@ function parseBody(body: unknown): GenerateRequestBody | null {
   };
 }
 
+/**
+ * No bloqueante (ver web/lib/jobs.ts): responde de inmediato con { jobId } y
+ * el cliente hace polling a GET /api/jobs/[jobId] para ver el progreso
+ * (análisis → adaptación → LaTeX → compilación → carta opcional) y el
+ * resultado final, sin mantener la conexión HTTP abierta hasta 15 min en
+ * modo Agente.
+ */
 export async function POST(request: Request) {
   let rawBody: unknown;
   try {
@@ -81,21 +86,10 @@ export async function POST(request: Request) {
     );
   }
 
-  try {
-    const result = await generateApplication(body);
-    return NextResponse.json(result);
-  } catch (err) {
-    if (err instanceof ApplicationGenerationError) {
-      return NextResponse.json({ error: err.message }, { status: err.status });
-    }
-    if (
-      err instanceof ClaudeConnectorError ||
-      err instanceof LatexCompileError ||
-      err instanceof PageCountError ||
-      err instanceof ProfileIOError
-    ) {
-      return NextResponse.json({ error: err.message }, { status: 502 });
-    }
-    return NextResponse.json({ error: "Error inesperado generando el CV." }, { status: 500 });
-  }
+  const jobId = startJob(
+    (setStage) => generateApplication({ ...body, onProgress: setStage }),
+    mapGenerationError,
+  );
+
+  return NextResponse.json({ jobId }, { status: 202 });
 }

@@ -37,5 +37,9 @@ export function buildFinalCVData(
     technical_skills:
       tailored.technical_skills.length > 0 ? tailored.technical_skills : base.technical_skills,
     soft_skills: tailored.soft_skills.length > 0 ? tailored.soft_skills : base.soft_skills,
+    certifications_compliance:
+      tailored.certifications_compliance.length > 0
+        ? tailored.certifications_compliance
+        : base.certifications_compliance,
   };
 }
