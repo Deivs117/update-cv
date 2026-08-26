@@ -13,7 +13,8 @@
       "additionalProperties": false,
       "properties": {
         "full_name": { "type": "string", "minLength": 1 },
-        "headline": { "type": "string" },
+        "headline_es": { "type": "string" },
+        "headline_en": { "type": "string" },
         "age": { "type": "integer", "minimum": 0 },
         "photo_path": { "type": "string" },
         "location": { "type": "string" },
@@ -46,13 +47,15 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["name", "role"],
+        "required": ["name", "role_es", "role_en"],
         "additionalProperties": false,
         "properties": {
           "name": { "type": "string" },
-          "role": { "type": "string" },
+          "role_es": { "type": "string" },
+          "role_en": { "type": "string" },
           "url": { "type": "string" },
-          "description": { "type": "string" }
+          "description_es": { "type": "string" },
+          "description_en": { "type": "string" }
         }
       }
     },
@@ -60,12 +63,13 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "institution", "degree", "start_date"],
+        "required": ["id", "institution", "degree_es", "degree_en", "start_date"],
         "additionalProperties": false,
         "properties": {
           "id": { "type": "string" },
           "institution": { "type": "string" },
-          "degree": { "type": "string" },
+          "degree_es": { "type": "string" },
+          "degree_en": { "type": "string" },
           "start_date": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$" },
           "end_date": {
             "type": "string",
@@ -79,12 +83,13 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "company", "role", "start_date", "bullets"],
+        "required": ["id", "company", "role_es", "role_en", "start_date", "bullets"],
         "additionalProperties": false,
         "properties": {
           "id": { "type": "string" },
           "company": { "type": "string" },
-          "role": { "type": "string" },
+          "role_es": { "type": "string" },
+          "role_en": { "type": "string" },
           "start_date": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$" },
           "end_date": {
             "type": "string",
@@ -119,10 +124,11 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["category", "items"],
+        "required": ["category_es", "category_en", "items"],
         "additionalProperties": false,
         "properties": {
-          "category": { "type": "string" },
+          "category_es": { "type": "string" },
+          "category_en": { "type": "string" },
           "items": { "type": "array", "items": { "type": "string" } }
         }
       }

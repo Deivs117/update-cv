@@ -26,9 +26,14 @@ export function ProfileForm({
             onChange={(v) => set("personal", { ...profile.personal, full_name: v })}
           />
           <Field
-            label="Titular / headline"
-            value={profile.personal.headline}
-            onChange={(v) => set("personal", { ...profile.personal, headline: v })}
+            label="Titular / headline (ES)"
+            value={profile.personal.headline_es}
+            onChange={(v) => set("personal", { ...profile.personal, headline_es: v })}
+          />
+          <Field
+            label="Titular / headline (EN)"
+            value={profile.personal.headline_en}
+            onChange={(v) => set("personal", { ...profile.personal, headline_en: v })}
           />
           <Field
             label="Email *"
@@ -110,16 +115,37 @@ export function ProfileForm({
           items={profile.founded_companies}
           onChange={(v) => set("founded_companies", v)}
           addLabel="empresa"
-          newItem={() => ({ name: "", role: "", url: "", description: "" })}
+          newItem={() => ({
+            name: "",
+            role_es: "",
+            role_en: "",
+            url: "",
+            description_es: "",
+            description_en: "",
+          })}
           renderItem={(item, _i, update) => (
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <Field label="Nombre" value={item.name} onChange={(v) => update({ ...item, name: v })} />
-              <Field label="Rol" value={item.role} onChange={(v) => update({ ...item, role: v })} />
               <Field label="URL" value={item.url} onChange={(v) => update({ ...item, url: v })} />
               <Field
-                label="Descripción"
-                value={item.description}
-                onChange={(v) => update({ ...item, description: v })}
+                label="Rol (ES)"
+                value={item.role_es}
+                onChange={(v) => update({ ...item, role_es: v })}
+              />
+              <Field
+                label="Rol (EN)"
+                value={item.role_en}
+                onChange={(v) => update({ ...item, role_en: v })}
+              />
+              <Field
+                label="Descripción (ES)"
+                value={item.description_es}
+                onChange={(v) => update({ ...item, description_es: v })}
+              />
+              <Field
+                label="Descripción (EN)"
+                value={item.description_en}
+                onChange={(v) => update({ ...item, description_en: v })}
               />
             </div>
           )}
@@ -135,7 +161,8 @@ export function ProfileForm({
           newItem={() => ({
             id: newId("edu"),
             institution: "",
-            degree: "",
+            degree_es: "",
+            degree_en: "",
             start_date: "",
             end_date: "",
             location: "",
@@ -147,7 +174,17 @@ export function ProfileForm({
                 value={item.institution}
                 onChange={(v) => update({ ...item, institution: v })}
               />
-              <Field label="Título" value={item.degree} onChange={(v) => update({ ...item, degree: v })} />
+              <div />
+              <Field
+                label="Título (ES)"
+                value={item.degree_es}
+                onChange={(v) => update({ ...item, degree_es: v })}
+              />
+              <Field
+                label="Título (EN)"
+                value={item.degree_en}
+                onChange={(v) => update({ ...item, degree_en: v })}
+              />
               <Field
                 label="Inicio (YYYY-MM) *"
                 value={item.start_date}
@@ -179,7 +216,8 @@ export function ProfileForm({
           newItem={() => ({
             id: newId("exp"),
             company: "",
-            role: "",
+            role_es: "",
+            role_en: "",
             start_date: "",
             end_date: "",
             location: "",
@@ -193,7 +231,17 @@ export function ProfileForm({
                   value={item.company}
                   onChange={(v) => update({ ...item, company: v })}
                 />
-                <Field label="Rol" value={item.role} onChange={(v) => update({ ...item, role: v })} />
+                <div />
+                <Field
+                  label="Rol (ES)"
+                  value={item.role_es}
+                  onChange={(v) => update({ ...item, role_es: v })}
+                />
+                <Field
+                  label="Rol (EN)"
+                  value={item.role_en}
+                  onChange={(v) => update({ ...item, role_en: v })}
+                />
                 <Field
                   label="Inicio (YYYY-MM) *"
                   value={item.start_date}
@@ -254,14 +302,21 @@ export function ProfileForm({
           items={profile.technical_skills}
           onChange={(v) => set("technical_skills", v)}
           addLabel="categoría"
-          newItem={() => ({ category: "", items: [] })}
+          newItem={() => ({ category_es: "", category_en: "", items: [] })}
           renderItem={(item, _i, update) => (
             <div className="flex flex-col gap-2">
-              <Field
-                label="Categoría"
-                value={item.category}
-                onChange={(v) => update({ ...item, category: v })}
-              />
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <Field
+                  label="Categoría (ES)"
+                  value={item.category_es}
+                  onChange={(v) => update({ ...item, category_es: v })}
+                />
+                <Field
+                  label="Categoría (EN)"
+                  value={item.category_en}
+                  onChange={(v) => update({ ...item, category_en: v })}
+                />
+              </div>
               <StringListEditor
                 items={item.items}
                 onChange={(v) => update({ ...item, items: v })}

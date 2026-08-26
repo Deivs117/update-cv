@@ -11,13 +11,24 @@ Ver `ARQUITECTURA_update-cv.md` para la especificación completa del sistema.
 ## Estado del proyecto
 
 - [x] Fase 0 — Setup
-- [ ] Fase 1 — Extracción (demo)
-- [ ] Fase 2 — Interfaz de perfil
-- [ ] Fase 3 — Plantillas y compilación
+- [x] Fase 1 — Extracción (demo)
+- [x] Fase 2 — Interfaz de perfil
+- [x] Fase 3 — Plantillas y compilación
 - [ ] Fase 4 — Motor de generación a medida
 - [ ] Fase 5 — Carta de presentación
 - [ ] Fase 6 — Modo Agente
 - [ ] Fase 7 — Pulido
+
+## Decisiones ajustadas durante la construcción (vs. el documento original)
+
+- **Regla de una página (sección 9.4/9.6):** en vez de un límite duro que recorta contenido
+  automáticamente o bloquea la generación, el máximo de páginas recomendado según años de
+  experiencia se muestra como **retroalimentación en la UI** (ej. "tu CV quedó en 3 páginas;
+  se recomienda máximo 1-2 para tu nivel de experiencia"), pero el usuario decide si recorta
+  o no. Se implementa en la Fase 4.
+- **Plantilla visual secundaria con foto** (ver sección "Plantilla visual" más abajo) --
+  prevista ya en el documento original como opción secundaria, ahora implementada.
+- **Campos bilingües adicionales** (ver sección "Campos bilingües" más abajo).
 
 ## Requisitos
 
@@ -80,3 +91,67 @@ update-cv/
 - `data/raw/images/` contiene por ahora capturas de pantalla del CV web actual de David
   (no fotos físicas de proyectos/certificados) — se usan como apoyo de contexto en la
   extracción inicial (Fase 1), no como fuente exhaustiva.
+
+## Notas de la Fase 1 (extracción)
+
+- `cd web && npm run extract-profile` procesa `data/raw/` (PDF + imágenes) y escribe
+  `data/profile.draft.json` — un borrador, nunca sobreescribe `data/profile.json`.
+
+## Notas de la Fase 2 (editor de perfil)
+
+- `/perfil` es el editor CRUD completo del perfil. Al entrar, si no existe
+  `data/profile.json` pero sí un `data/profile.draft.json` (de una extracción previa),
+  lo carga automáticamente como punto de partida para revisión.
+- El botón "Importar desde PDF/imágenes" dispara la extracción de nuevo y reemplaza el
+  contenido del formulario (sin guardar) — hay que presionar "Guardar perfil" para
+  confirmarlo como definitivo.
+- El reordenado de bullets/listas usa botones ↑/↓ en vez de drag-and-drop nativo (más
+  confiable entre navegadores).
+
+## Notas de la Fase 3 (plantillas y compilación)
+
+- `templates/latex/cv-{es,en}.tex.tpl`: plantillas ATS-safe (una columna, sin tablas,
+  iconos ni imágenes). `web/lib/latex/render.ts` las rellena con escape correcto de
+  caracteres especiales de LaTeX (`&`, `%`, `_`, `#`, `$`, etc.).
+- `web/lib/latex/compile.ts` ejecuta `tectonic` (o `pdflatex` si `LATEX_ENGINE=pdflatex`
+  en `.env`) y guarda el log completo en `compile.log` junto al PDF, tanto en éxito como
+  en fallo.
+- `web/lib/latex/page-count.ts` verifica el número real de páginas del PDF con `pdf-lib`.
+- Prueba de punta a punta (sin IA, perfil de ejemplo estático):
+  ```bash
+  cd web && npm run test-latex
+  ```
+  Genera `.fase3-test-output/cv-es.pdf`, `cv-en.pdf`, y `.fase3-test-output/visual/cv-visual.pdf`
+  (carpeta gitignored, no es una aplicación real de `apps/`).
+
+### Plantilla visual secundaria (opcional, NO ATS-safe)
+
+- `templates/latex/cv-visual.tex.tpl` + `templates/latex/visual/` (clase `documentMETADATA.cls`
+  adaptada de un derivado de Awesome-CV/YAAC aportado por el usuario, + fuentes Source Sans Pro).
+  Con foto, iconos y color -- solo para enviar directo a un humano, nunca para ATS.
+- Requiere que `personal.photo_path` apunte a una imagen real en `data/raw/images/`.
+- `web/lib/latex/render-visual.ts` arma el `.tex` con los macros de esa clase;
+  `prepareVisualAssets()` copia `documentMETADATA.cls`, `fonts/`, y la foto junto al `.tex`
+  antes de compilar (tectonic los necesita en el mismo directorio).
+- La clase original tenía dos bugs reales que se corrigieron al adaptarla: (1) usaba
+  `luainputenc`, exclusivo de LuaLaTeX, que rompía con tectonic (motor XeTeX) -- se quitó,
+  ya que XeTeX maneja UTF-8 nativamente vía `fontspec`; (2) el comando de foto usaba una
+  clave de `tikz` (`fill overzoom image`) que nunca estaba definida -- se reemplazó por
+  `\includegraphics` estándar.
+- Selector para elegir esta plantilla en el wizard llega en la Fase 4.
+
+### Campos bilingües (corrección de idioma mixto)
+
+Varios campos de texto libre eran de un solo idioma y por eso el CV generado en un idioma
+mostraba texto suelto en el otro (ej. el "tagline" bajo el nombre seguía en inglés en la
+versión en español). Ahora tienen variantes `_es`/`_en`, igual que los bullets:
+
+- `personal.headline` → `headline_es` / `headline_en`
+- `founded_companies[].role` → `role_es` / `role_en`, `.description` → `description_es` / `description_en`
+- `experience[].role` → `role_es` / `role_en`
+- `education[].degree` → `degree_es` / `degree_en`
+- `technical_skills[].category` → `category_es` / `category_en`
+
+Los nombres propios (`company`, `institution`, `name` de empresa) NO se traducen.
+`languages[].language` (ej. "Spanish"/"English") sigue siendo de un solo idioma por
+decisión explícita -- puedes escribirlo en el idioma que prefieras al llenar tu perfil.

@@ -12,6 +12,9 @@
 apps/*
 !apps/.gitkeep
 
+# Salida de prueba del pipeline LaTeX (Fase 3), no es una aplicación real
+.fase3-test-output/
+
 # Node / Next.js (web/)
 web/node_modules/
 web/.next/

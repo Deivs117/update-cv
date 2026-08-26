@@ -17,7 +17,8 @@ export interface EditableBullet {
 export interface EditableEducation {
   id: string;
   institution: string;
-  degree: string;
+  degree_es: string;
+  degree_en: string;
   start_date: string;
   end_date: string;
   location: string;
@@ -26,7 +27,8 @@ export interface EditableEducation {
 export interface EditableExperience {
   id: string;
   company: string;
-  role: string;
+  role_es: string;
+  role_en: string;
   start_date: string;
   end_date: string;
   location: string;
@@ -47,13 +49,16 @@ export interface EditableSocialNetwork {
 
 export interface EditableFoundedCompany {
   name: string;
-  role: string;
+  role_es: string;
+  role_en: string;
   url: string;
-  description: string;
+  description_es: string;
+  description_en: string;
 }
 
 export interface EditableSkillGroup {
-  category: string;
+  category_es: string;
+  category_en: string;
   items: string[];
 }
 
@@ -65,7 +70,8 @@ export interface EditableLanguage {
 export interface EditableProfile {
   personal: {
     full_name: string;
-    headline: string;
+    headline_es: string;
+    headline_en: string;
     age: string; // input controlado como texto; se convierte a number al guardar
     photo_path: string;
     location: string;
@@ -96,7 +102,8 @@ export function emptyProfile(): EditableProfile {
   return {
     personal: {
       full_name: "",
-      headline: "",
+      headline_es: "",
+      headline_en: "",
       age: "",
       photo_path: "",
       location: "",
@@ -125,7 +132,8 @@ export function toEditableProfile(source: ProfileDraft | null | undefined): Edit
   return {
     personal: {
       full_name: source.personal?.full_name ?? "",
-      headline: source.personal?.headline ?? "",
+      headline_es: source.personal?.headline_es ?? "",
+      headline_en: source.personal?.headline_en ?? "",
       age: source.personal?.age != null ? String(source.personal.age) : "",
       photo_path: source.personal?.photo_path ?? "",
       location: source.personal?.location ?? "",
@@ -140,14 +148,17 @@ export function toEditableProfile(source: ProfileDraft | null | undefined): Edit
     summary: { es: source.summary?.es ?? "", en: source.summary?.en ?? "" },
     founded_companies: (source.founded_companies ?? []).map((c) => ({
       name: c.name ?? "",
-      role: c.role ?? "",
+      role_es: c.role_es ?? "",
+      role_en: c.role_en ?? "",
       url: c.url ?? "",
-      description: c.description ?? "",
+      description_es: c.description_es ?? "",
+      description_en: c.description_en ?? "",
     })),
     education: (source.education ?? []).map((e) => ({
       id: e.id || newId("edu"),
       institution: e.institution ?? "",
-      degree: e.degree ?? "",
+      degree_es: e.degree_es ?? "",
+      degree_en: e.degree_en ?? "",
       start_date: e.start_date ?? "",
       end_date: e.end_date ?? "",
       location: e.location ?? "",
@@ -155,7 +166,8 @@ export function toEditableProfile(source: ProfileDraft | null | undefined): Edit
     experience: (source.experience ?? []).map((e) => ({
       id: e.id || newId("exp"),
       company: e.company ?? "",
-      role: e.role ?? "",
+      role_es: e.role_es ?? "",
+      role_en: e.role_en ?? "",
       start_date: e.start_date ?? "",
       end_date: e.end_date ?? "",
       location: e.location ?? "",
@@ -178,7 +190,8 @@ export function toEditableProfile(source: ProfileDraft | null | undefined): Edit
       })),
     })),
     technical_skills: (source.technical_skills ?? []).map((s) => ({
-      category: s.category ?? "",
+      category_es: s.category_es ?? "",
+      category_en: s.category_en ?? "",
       items: s.items ?? [],
     })),
     soft_skills: source.soft_skills ?? [],
@@ -199,7 +212,8 @@ export function toProfileInput(editable: EditableProfile): ProfileInput {
   return {
     personal: {
       full_name: editable.personal.full_name.trim(),
-      headline: undefinedIfEmpty(editable.personal.headline),
+      headline_es: undefinedIfEmpty(editable.personal.headline_es),
+      headline_en: undefinedIfEmpty(editable.personal.headline_en),
       age: editable.personal.age.trim() === "" ? undefined : Number(editable.personal.age),
       photo_path: undefinedIfEmpty(editable.personal.photo_path),
       location: undefinedIfEmpty(editable.personal.location),
@@ -215,17 +229,20 @@ export function toProfileInput(editable: EditableProfile): ProfileInput {
       en: undefinedIfEmpty(editable.summary.en),
     },
     founded_companies: editable.founded_companies
-      .filter((c) => c.name.trim() && c.role.trim())
+      .filter((c) => c.name.trim() && c.role_es.trim() && c.role_en.trim())
       .map((c) => ({
         name: c.name.trim(),
-        role: c.role.trim(),
+        role_es: c.role_es.trim(),
+        role_en: c.role_en.trim(),
         url: undefinedIfEmpty(c.url),
-        description: undefinedIfEmpty(c.description),
+        description_es: undefinedIfEmpty(c.description_es),
+        description_en: undefinedIfEmpty(c.description_en),
       })),
     education: editable.education.map((e) => ({
       id: e.id,
       institution: e.institution.trim(),
-      degree: e.degree.trim(),
+      degree_es: e.degree_es.trim(),
+      degree_en: e.degree_en.trim(),
       start_date: e.start_date.trim(),
       end_date: undefinedIfEmpty(e.end_date),
       location: undefinedIfEmpty(e.location),
@@ -233,7 +250,8 @@ export function toProfileInput(editable: EditableProfile): ProfileInput {
     experience: editable.experience.map((e) => ({
       id: e.id,
       company: e.company.trim(),
-      role: e.role.trim(),
+      role_es: e.role_es.trim(),
+      role_en: e.role_en.trim(),
       start_date: e.start_date.trim(),
       end_date: undefinedIfEmpty(e.end_date),
       location: undefinedIfEmpty(e.location),
@@ -256,9 +274,10 @@ export function toProfileInput(editable: EditableProfile): ProfileInput {
       })),
     })),
     technical_skills: editable.technical_skills
-      .filter((s) => s.category.trim())
+      .filter((s) => s.category_es.trim() && s.category_en.trim())
       .map((s) => ({
-        category: s.category.trim(),
+        category_es: s.category_es.trim(),
+        category_en: s.category_en.trim(),
         items: s.items.filter((i) => i.trim() !== ""),
       })),
     soft_skills: editable.soft_skills.filter((s) => s.trim() !== ""),

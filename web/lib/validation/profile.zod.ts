@@ -27,7 +27,8 @@ export const socialNetworkSchema = z.object({
 
 export const personalSchema = z.object({
   full_name: z.string().min(1, "El nombre completo es obligatorio"),
-  headline: z.string().optional(),
+  headline_es: z.string().optional(),
+  headline_en: z.string().optional(),
   age: z.number().int().min(0).optional(),
   photo_path: z.string().optional(),
   location: z.string().optional(),
@@ -44,15 +45,18 @@ export const summarySchema = z.object({
 
 export const foundedCompanySchema = z.object({
   name: z.string().min(1),
-  role: z.string().min(1),
+  role_es: z.string().min(1),
+  role_en: z.string().min(1),
   url: z.string().optional(),
-  description: z.string().optional(),
+  description_es: z.string().optional(),
+  description_en: z.string().optional(),
 });
 
 export const educationSchema = z.object({
   id: z.string().min(1),
   institution: z.string().min(1),
-  degree: z.string().min(1),
+  degree_es: z.string().min(1),
+  degree_en: z.string().min(1),
   start_date: yearMonth,
   end_date: yearMonthOrPresent.optional(),
   location: z.string().optional(),
@@ -68,7 +72,8 @@ export const bulletSchema = z.object({
 export const experienceSchema = z.object({
   id: z.string().min(1),
   company: z.string().min(1),
-  role: z.string().min(1),
+  role_es: z.string().min(1),
+  role_en: z.string().min(1),
   start_date: yearMonth,
   end_date: yearMonthOrPresent.optional(),
   location: z.string().optional(),
@@ -83,7 +88,8 @@ export const projectSchema = z.object({
 });
 
 export const technicalSkillGroupSchema = z.object({
-  category: z.string().min(1),
+  category_es: z.string().min(1),
+  category_en: z.string().min(1),
   items: z.array(z.string()),
 });
 
@@ -172,11 +178,16 @@ const projectDraftSchema = projectSchema.partial().extend({
   bullets: z.array(bulletDraftSchema).optional(),
 });
 
+const foundedCompanyDraftSchema = foundedCompanySchema.partial();
+const technicalSkillGroupDraftSchema = technicalSkillGroupSchema.partial();
+
 export const profileDraftSchema = profileSchema.partial().extend({
   personal: personalSchema.partial(),
+  founded_companies: z.array(foundedCompanyDraftSchema).optional(),
   education: z.array(educationDraftSchema).optional(),
   experience: z.array(experienceDraftSchema).optional(),
   projects: z.array(projectDraftSchema).optional(),
+  technical_skills: z.array(technicalSkillGroupDraftSchema).optional(),
 });
 
 export type ProfileDraft = z.infer<typeof profileDraftSchema>;
