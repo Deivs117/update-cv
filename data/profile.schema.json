@@ -135,17 +135,27 @@
     },
     "soft_skills": {
       "type": "array",
-      "items": { "type": "string" }
+      "items": {
+        "type": "object",
+        "required": ["text_es", "text_en"],
+        "additionalProperties": false,
+        "properties": {
+          "text_es": { "type": "string" },
+          "text_en": { "type": "string" }
+        }
+      }
     },
     "languages": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["language", "level"],
+        "required": ["language_es", "language_en", "level_es", "level_en"],
         "additionalProperties": false,
         "properties": {
-          "language": { "type": "string" },
-          "level": { "type": "string" }
+          "language_es": { "type": "string" },
+          "language_en": { "type": "string" },
+          "level_es": { "type": "string" },
+          "level_en": { "type": "string" }
         }
       }
     },

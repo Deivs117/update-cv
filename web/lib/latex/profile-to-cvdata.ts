@@ -50,8 +50,11 @@ export function profileToCVData(profile: Profile, language: Language): CVData {
       category: language === "es" ? s.category_es : s.category_en,
       items: s.items,
     })),
-    soft_skills: profile.soft_skills ?? [],
-    languages: profile.languages ?? [],
+    soft_skills: (profile.soft_skills ?? []).map(text),
+    languages: (profile.languages ?? []).map((l) => ({
+      language: language === "es" ? l.language_es : l.language_en,
+      level: language === "es" ? l.level_es : l.level_en,
+    })),
     certifications_compliance: profile.certifications_compliance ?? [],
     founded_companies: (profile.founded_companies ?? []).map((c) => ({
       name: c.name,

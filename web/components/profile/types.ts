@@ -63,8 +63,15 @@ export interface EditableSkillGroup {
 }
 
 export interface EditableLanguage {
-  language: string;
-  level: string;
+  language_es: string;
+  language_en: string;
+  level_es: string;
+  level_en: string;
+}
+
+export interface EditableSoftSkill {
+  text_es: string;
+  text_en: string;
 }
 
 export interface EditableProfile {
@@ -86,7 +93,7 @@ export interface EditableProfile {
   experience: EditableExperience[];
   projects: EditableProject[];
   technical_skills: EditableSkillGroup[];
-  soft_skills: string[];
+  soft_skills: EditableSoftSkill[];
   languages: EditableLanguage[];
   certifications_compliance: string[];
 }
@@ -194,10 +201,15 @@ export function toEditableProfile(source: ProfileDraft | null | undefined): Edit
       category_en: s.category_en ?? "",
       items: s.items ?? [],
     })),
-    soft_skills: source.soft_skills ?? [],
+    soft_skills: (source.soft_skills ?? []).map((s) => ({
+      text_es: s.text_es ?? "",
+      text_en: s.text_en ?? "",
+    })),
     languages: (source.languages ?? []).map((l) => ({
-      language: l.language ?? "",
-      level: l.level ?? "",
+      language_es: l.language_es ?? "",
+      language_en: l.language_en ?? "",
+      level_es: l.level_es ?? "",
+      level_en: l.level_en ?? "",
     })),
     certifications_compliance: source.certifications_compliance ?? [],
   };
@@ -280,8 +292,19 @@ export function toProfileInput(editable: EditableProfile): ProfileInput {
         category_en: s.category_en.trim(),
         items: s.items.filter((i) => i.trim() !== ""),
       })),
-    soft_skills: editable.soft_skills.filter((s) => s.trim() !== ""),
-    languages: editable.languages.filter((l) => l.language.trim() && l.level.trim()),
+    soft_skills: editable.soft_skills
+      .filter((s) => s.text_es.trim() && s.text_en.trim())
+      .map((s) => ({ text_es: s.text_es.trim(), text_en: s.text_en.trim() })),
+    languages: editable.languages
+      .filter(
+        (l) => l.language_es.trim() && l.language_en.trim() && l.level_es.trim() && l.level_en.trim(),
+      )
+      .map((l) => ({
+        language_es: l.language_es.trim(),
+        language_en: l.language_en.trim(),
+        level_es: l.level_es.trim(),
+        level_en: l.level_en.trim(),
+      })),
     certifications_compliance: editable.certifications_compliance.filter(
       (c) => c.trim() !== "",
     ),

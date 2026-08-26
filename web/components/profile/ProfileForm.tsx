@@ -328,10 +328,25 @@ export function ProfileForm({
       </SectionCard>
 
       <SectionCard title="Soft skills">
-        <StringListEditor
+        <ArrayEditor
           items={profile.soft_skills}
           onChange={(v) => set("soft_skills", v)}
-          placeholder="soft skill"
+          addLabel="soft skill"
+          newItem={() => ({ text_es: "", text_en: "" })}
+          renderItem={(item, _i, update) => (
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <Field
+                label="ES"
+                value={item.text_es}
+                onChange={(v) => update({ ...item, text_es: v })}
+              />
+              <Field
+                label="EN"
+                value={item.text_en}
+                onChange={(v) => update({ ...item, text_en: v })}
+              />
+            </div>
+          )}
         />
       </SectionCard>
 
@@ -340,15 +355,29 @@ export function ProfileForm({
           items={profile.languages}
           onChange={(v) => set("languages", v)}
           addLabel="idioma"
-          newItem={() => ({ language: "", level: "" })}
+          newItem={() => ({ language_es: "", language_en: "", level_es: "", level_en: "" })}
           renderItem={(item, _i, update) => (
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <Field
-                label="Idioma"
-                value={item.language}
-                onChange={(v) => update({ ...item, language: v })}
+                label="Idioma (ES)"
+                value={item.language_es}
+                onChange={(v) => update({ ...item, language_es: v })}
               />
-              <Field label="Nivel" value={item.level} onChange={(v) => update({ ...item, level: v })} />
+              <Field
+                label="Idioma (EN)"
+                value={item.language_en}
+                onChange={(v) => update({ ...item, language_en: v })}
+              />
+              <Field
+                label="Nivel (ES)"
+                value={item.level_es}
+                onChange={(v) => update({ ...item, level_es: v })}
+              />
+              <Field
+                label="Nivel (EN)"
+                value={item.level_en}
+                onChange={(v) => update({ ...item, level_en: v })}
+              />
             </div>
           )}
         />

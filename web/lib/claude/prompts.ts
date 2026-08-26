@@ -32,14 +32,14 @@ Tu tarea: leer todo el contenido y devolver un ÚNICO objeto JSON que siga esta 
   }],
   "projects": [{ "id": string, "name": string, "date": string, "bullets": [{ "id": string, "text_es": string, "text_en": string, "keywords": string[] }] }],
   "technical_skills": [{ "category_es": string, "category_en": string, "items": string[] }],
-  "soft_skills": string[],
-  "languages": [{ "language": string, "level": string }],
+  "soft_skills": [{ "text_es": string, "text_en": string }],
+  "languages": [{ "language_es": string, "language_en": string, "level_es": string, "level_en": string }],
   "certifications_compliance": string[]
 }
 
 Reglas importantes:
 - Genera un "id" corto y estable para cada experiencia/proyecto/bullet (ej. "exp-1", "exp-1-b1", "proj-salli", "proj-salli-b1").
-- Cada bullet debe tener SIEMPRE tanto "text_es" como "text_en": si el CV original está en un solo idioma, traduce tú mismo el otro campo con buena calidad profesional (no traducción literal palabra por palabra). Lo mismo aplica a "role_es"/"role_en" y "description_es"/"description_en" en founded_companies, a "headline_es"/"headline_en" en personal, a "role_es"/"role_en" en experience, a "degree_es"/"degree_en" en education, y a "category_es"/"category_en" en technical_skills. Los nombres propios (empresa, institución) NO se traducen.
+- Cada bullet debe tener SIEMPRE tanto "text_es" como "text_en": si el CV original está en un solo idioma, traduce tú mismo el otro campo con buena calidad profesional (no traducción literal palabra por palabra). Lo mismo aplica a "role_es"/"role_en" y "description_es"/"description_en" en founded_companies, a "headline_es"/"headline_en" en personal, a "role_es"/"role_en" en experience, a "degree_es"/"degree_en" en education, a "category_es"/"category_en" en technical_skills, a "text_es"/"text_en" en soft_skills, y a "language_es"/"language_en" y "level_es"/"level_en" en languages (ej. "Spanish"/"Español", "Native"/"Nativo"). Los nombres propios (empresa, institución) NO se traducen.
 - "keywords" por bullet: 2-6 palabras clave técnicas relevantes de ese logro (en minúsculas), para uso posterior en matching contra vacantes.
 - Fechas en formato "YYYY-MM". Si el CV solo da el año, usa "-01" como mes por defecto y prioriza no inventar precisión que no existe.
 - Si hay un puesto actual/en curso, usa "present" como end_date.

@@ -320,7 +320,10 @@
 }
 
 % Resume part title definition
-\newcommand\sectionTitle[2]{\section{\texorpdfstring{\color{accentcolor}#2\enspace \textsc{#1}}{#1}}}
+% Nota update-cv: el ícono se escala a \normalsize (el encabezado del section
+% queda en \Large) para que ocupe menos espacio y se vea menos saturado --
+% ver \titleformat{\section} más arriba.
+\newcommand\sectionTitle[2]{\section{\texorpdfstring{\color{accentcolor}{\normalsize#2}\enspace \textsc{#1}}{#1}}}
 
 % Define the 'keywords' environment
 \newenvironment{keywords}{%

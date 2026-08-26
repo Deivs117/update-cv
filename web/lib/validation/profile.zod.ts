@@ -94,8 +94,15 @@ export const technicalSkillGroupSchema = z.object({
 });
 
 export const languageSchema = z.object({
-  language: z.string().min(1),
-  level: z.string().min(1),
+  language_es: z.string().min(1),
+  language_en: z.string().min(1),
+  level_es: z.string().min(1),
+  level_en: z.string().min(1),
+});
+
+export const softSkillSchema = z.object({
+  text_es: z.string().min(1),
+  text_en: z.string().min(1),
 });
 
 export const metaSchema = z.object({
@@ -111,7 +118,7 @@ export const profileSchema = z.object({
   experience: z.array(experienceSchema),
   projects: z.array(projectSchema).optional(),
   technical_skills: z.array(technicalSkillGroupSchema).optional(),
-  soft_skills: z.array(z.string()).optional(),
+  soft_skills: z.array(softSkillSchema).optional(),
   languages: z.array(languageSchema).optional(),
   certifications_compliance: z.array(z.string()).optional(),
   meta: metaSchema,
@@ -180,6 +187,8 @@ const projectDraftSchema = projectSchema.partial().extend({
 
 const foundedCompanyDraftSchema = foundedCompanySchema.partial();
 const technicalSkillGroupDraftSchema = technicalSkillGroupSchema.partial();
+const languageDraftSchema = languageSchema.partial();
+const softSkillDraftSchema = softSkillSchema.partial();
 
 export const profileDraftSchema = profileSchema.partial().extend({
   personal: personalSchema.partial(),
@@ -188,6 +197,8 @@ export const profileDraftSchema = profileSchema.partial().extend({
   experience: z.array(experienceDraftSchema).optional(),
   projects: z.array(projectDraftSchema).optional(),
   technical_skills: z.array(technicalSkillGroupDraftSchema).optional(),
+  languages: z.array(languageDraftSchema).optional(),
+  soft_skills: z.array(softSkillDraftSchema).optional(),
 });
 
 export type ProfileDraft = z.infer<typeof profileDraftSchema>;

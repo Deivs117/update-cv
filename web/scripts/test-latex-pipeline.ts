@@ -115,10 +115,16 @@ const SAMPLE_PROFILE: Profile = {
       items: ["C++", "C", "C#", "Python", "JavaScript", "SQL", "Bash"],
     },
   ],
-  soft_skills: ["Cross-Functional Leadership", "Research-Driven Problem Solving"],
+  soft_skills: [
+    { text_es: "Liderazgo Multifuncional", text_en: "Cross-Functional Leadership" },
+    {
+      text_es: "Resolución de Problemas Basada en Investigación",
+      text_en: "Research-Driven Problem Solving",
+    },
+  ],
   languages: [
-    { language: "Spanish", level: "Native" },
-    { language: "English", level: "B2" },
+    { language_es: "Español", language_en: "Spanish", level_es: "Nativo", level_en: "Native" },
+    { language_es: "Inglés", language_en: "English", level_es: "B2", level_en: "B2" },
   ],
   certifications_compliance: ["ISO 9001", "ISO 10218", "ISO/TS 15066", "ISO 13482", "ISO/IEC 42001"],
   meta: { schema_version: "1.0", last_updated: new Date().toISOString() },

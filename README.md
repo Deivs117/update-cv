@@ -139,6 +139,8 @@ update-cv/
   clave de `tikz` (`fill overzoom image`) que nunca estaba definida -- se reemplazó por
   `\includegraphics` estándar.
 - Selector para elegir esta plantilla en el wizard llega en la Fase 4.
+- Los íconos de encabezado de sección se redujeron a `\normalsize` (el título del section
+  queda en `\Large`) para menos saturación visual y más espacio para texto.
 
 ### Campos bilingües (corrección de idioma mixto)
 
@@ -151,7 +153,7 @@ versión en español). Ahora tienen variantes `_es`/`_en`, igual que los bullets
 - `experience[].role` → `role_es` / `role_en`
 - `education[].degree` → `degree_es` / `degree_en`
 - `technical_skills[].category` → `category_es` / `category_en`
+- `soft_skills[]`: de `string[]` a `{ text_es, text_en }[]`
+- `languages[]`: `language`/`level` → `language_es`/`language_en`/`level_es`/`level_en`
 
 Los nombres propios (`company`, `institution`, `name` de empresa) NO se traducen.
-`languages[].language` (ej. "Spanish"/"English") sigue siendo de un solo idioma por
-decisión explícita -- puedes escribirlo en el idioma que prefieras al llenar tu perfil.
