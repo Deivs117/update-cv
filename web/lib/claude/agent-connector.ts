@@ -78,6 +78,15 @@ async function runAgentTask<T>(
       `Esperando a que Claude Code la procese (hasta ${Math.round(TASK_TIMEOUT_MS / 1000)}s)...`,
   );
 
+  // Claude Code (o el watcher) no escribe el archivo de forma atómica -- hay
+  // una ventana real en la que fileExists() ya es true pero el contenido
+  // todavía se está escribiendo. Un solo intento de parseo en ese instante
+  // puede fallar con un JSON truncado que segundos después es válido. En vez
+  // de fallar la tarea entera por esa carrera, se reintenta unas pocas veces
+  // antes de darla por corrupta de verdad.
+  let consecutiveParseFailures = 0;
+  const MAX_PARSE_RETRIES = 5;
+
   const deadline = Date.now() + TASK_TIMEOUT_MS;
   while (Date.now() < deadline) {
     if (await fileExists(resultPath)) {
@@ -87,8 +96,14 @@ async function runAgentTask<T>(
         raw = await readFile(resultPath, "utf-8");
         parsedJson = JSON.parse(raw);
       } catch (err) {
+        consecutiveParseFailures += 1;
+        if (consecutiveParseFailures <= MAX_PARSE_RETRIES) {
+          await sleep(POLL_INTERVAL_MS);
+          continue;
+        }
         throw new ClaudeConnectorError(
-          `El resultado escrito por Claude Code en ${resultPath} no es JSON válido.`,
+          `El resultado escrito por Claude Code en ${resultPath} no es JSON válido (tras ${MAX_PARSE_RETRIES} reintentos). ` +
+            `El archivo de pending/ no se borró -- revísalo a mano antes de reintentar.`,
           err,
         );
       }
