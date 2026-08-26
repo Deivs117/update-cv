@@ -17,7 +17,7 @@ Ver `ARQUITECTURA_update-cv.md` para la especificación completa del sistema.
 - [x] Fase 4 — Motor de generación a medida
 - [x] Fase 5 — Carta de presentación
 - [x] Fase 6 — Modo Agente
-- [ ] Fase 7 — Pulido
+- [x] Fase 7 — Pulido
 
 ## Decisiones ajustadas durante la construcción (vs. el documento original)
 
@@ -223,3 +223,24 @@ Los nombres propios (`company`, `institution`, `name` de empresa) NO se traducen
   resultado se recoge correctamente y el archivo de `pending/` se limpia. También se probó
   el camino de timeout (sin nadie procesando la tarea): mensaje de error claro con el `task_id`
   y la ruta del archivo pendiente.
+
+## Notas de la Fase 7 (pulido)
+
+- `lib/generation-pipeline.ts`: se extrajo toda la lógica de `POST /api/nueva-aplicacion/generate`
+  a una función compartida (`generateApplication`), para no duplicarla con el botón "Regenerar".
+- **`/aplicaciones`**: historial simple ordenado por fecha (sin búsqueda/filtrado, decisión ya
+  tomada) -- lista todas las carpetas de `apps/` con acceso rápido a la vacante original y al
+  detalle de cada una.
+- **`/aplicaciones/[slug]`**: vista de detalle con:
+  - Previsualización del CV (y de la carta, si existe) embebida.
+  - **"Regenerar con mi perfil actual"** (`POST /api/apps/[slug]/regenerate`): re-corre todo
+    el pipeline (análisis + tailorCV + render + compile) reusando la MISMA carpeta (no crea
+    una con la fecha de hoy) -- útil después de editar tu perfil.
+  - **Editor de LaTeX avanzado** (`POST /api/apps/[slug]/recompile`): edita el `.tex` a mano y
+    recompila sin volver a llamar a Claude, para ajustes finos de último minuto. Si la
+    compilación falla, el mensaje de error de `tectonic`/`pdflatex` (resumen del log +
+    ruta al log completo) se muestra directamente en la UI.
+- Probado con las aplicaciones reales ya generadas: listado correcto, regeneración reusando
+  la misma carpeta (verificado que no duplica), y el editor avanzado -- incluyendo forzar un
+  error de compilación real (`\undefinedcommandxyz`) para confirmar que el mensaje de error
+  llega completo y legible a la UI, luego restaurado sin dejar la aplicación rota.

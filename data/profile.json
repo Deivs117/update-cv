@@ -64,6 +64,7 @@
       "role_en": "Lead Mechatronics Engineer",
       "start_date": "2026-01",
       "end_date": "present",
+      "location": "Cali, Colombia",
       "bullets": [
         {
           "id": "exp-1-b1",
@@ -120,6 +121,7 @@
       "role_en": "Robotics & AI Researcher",
       "start_date": "2025-01",
       "end_date": "present",
+      "location": "Cali, Colombia",
       "bullets": []
     }
   ],
@@ -342,6 +344,6 @@
   ],
   "meta": {
     "schema_version": "1.0",
-    "last_updated": "2026-08-26T01:37:36.264Z"
+    "last_updated": "2026-08-26T02:20:48.486Z"
   }
 }
