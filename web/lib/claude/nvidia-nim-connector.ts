@@ -47,12 +47,17 @@ import { buildCandidateContent, resolveTailoredContent } from "@/lib/tailoring";
 
 const NIM_BASE_URL = "https://integrate.api.nvidia.com/v1";
 
-// Modelo de texto por defecto: uno robusto de propósito general del catálogo.
+// meta/llama-3.3-70b-instruct (el default original) llegó a end-of-life el
+// 2026-08-26 -- confirmado contra una llamada real (410 Gone). Muchos modelos
+// "grandes" del catálogo (nemotron-70b, mistral-nemotron, glm-5.3-flash, etc.)
+// devuelven 404 para una cuenta NIM recién creada sin solicitar acceso aparte
+// en el dashboard -- meta/llama-3.2-11b-vision-instruct sí respondió con una
+// cuenta nueva sin ningún paso extra, así que es el default más seguro para
+// no técnicos (además cubre texto y visión con el mismo modelo, ver abajo).
 // Modelo de visión: se exige explícito (NVIDIA_NIM_VISION_MODEL) porque no
 // todos los modelos del catálogo tienen capacidad multimodal -- ver nota de
-// limitación arriba. Ejemplos reales con visión en el catálogo (verificados,
-// no adivinados): familia Llama 3.2 Vision (11B/90B), familia Qwen-VL/Qwen3.5-VLM.
-const DEFAULT_TEXT_MODEL = "meta/llama-3.3-70b-instruct";
+// limitación arriba.
+const DEFAULT_TEXT_MODEL = "meta/llama-3.2-11b-vision-instruct";
 
 const EXTRACTION_MAX_TOKENS = 16000;
 const ANALYSIS_MAX_TOKENS = 2000;
