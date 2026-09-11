@@ -1,341 +1,246 @@
 # update-cv
 
-Sistema **100% local** para generar CVs a la medida de cada vacante de empleo, a partir de
-un perfil canónico (`data/profile.json`), plantillas LaTeX ATS-safe y compilación local a PDF.
+Sistema que genera **CVs y cartas de presentación a la medida de cada vacante**, a partir de
+un perfil profesional canónico. Cada aplicación se analiza contra el texto real de la oferta,
+se reescribe con el vocabulario de esa vacante específica (clave para el matching léxico de
+los ATS), se compila a PDF vía LaTeX, y queda archivada en su propia carpeta con la vacante
+original guardada junto al resultado, para trazabilidad.
 
-Ver `ARQUITECTURA_update-cv.md` para la especificación completa del sistema.
+Corre localmente sobre Next.js. No depende de una base de datos: el perfil vive en un único
+JSON versionable y cada aplicación generada es una carpeta autocontenida en el sistema de
+archivos.
 
-> Este README se va completando fase por fase (ver roadmap en la sección 16 de
-> `ARQUITECTURA_update-cv.md`). Lo que sigue documenta el estado real del repo hoy.
+## Qué hace
 
-## Estado del proyecto
+- **Perfil canónico único** (`data/profile.json`): datos personales, experiencia, proyectos,
+  educación, skills técnicas y blandas, idiomas y certificaciones — con bullets bilingües
+  (`text_es`/`text_en`) e ids estables por bullet, para poder seleccionarlos, reordenarlos y
+  reescribirlos sin perder trazabilidad hacia el dato original.
+- **Extracción automática desde un CV existente**: lee un PDF (y opcionalmente imágenes de
+  apoyo) y produce un borrador de perfil estructurado, revisable antes de guardarse — nunca
+  sobreescribe el perfil real sin confirmación explícita del usuario.
+- **Editor de perfil** (`/perfil`): CRUD completo sobre el JSON canónico, con validación en
+  tiempo real (Zod) y reordenado de bullets/listas.
+- **Generación de CV a la medida** (`/nueva-aplicacion`): wizard de 3 pasos — pegar la
+  vacante → elegir idioma y opciones → generar. El motor:
+  1. Analiza la vacante (skills técnicas, soft skills, keywords de sector, seniority),
+     siempre en el mismo idioma en que está escrita la oferta.
+  2. Selecciona y reescribe los bullets, skills, soft skills y certificaciones relevantes
+     para esa vacante específica, **sin inventar tecnologías ni logros** que no estén en el
+     perfil — la respuesta del modelo se resuelve de vuelta contra el perfil real por `id`,
+     así que una alucinación nunca puede corromper datos estructurales (empresa, fechas,
+     etc.), solo el texto y el orden de lo que ya existe.
+  3. Renderiza la plantilla LaTeX correspondiente y compila el PDF localmente.
+  4. Verifica el número real de páginas del PDF resultante y lo muestra como
+     retroalimentación en la UI frente a la recomendación por años de experiencia (el límite
+     es orientativo, no bloquea la generación).
+- **Carta de presentación opcional**: reutiliza el mismo análisis de vacante que el CV (no
+  se re-analiza dos veces), genera solo el cuerpo del texto (2-4 párrafos, sin inventar
+  logros), y se entrega como PDF compilado o como texto plano para copiar/pegar.
+- **Historial de aplicaciones** (`/aplicaciones`): lista cada aplicación generada con acceso
+  directo a la vacante original y al detalle.
+- **Detalle de aplicación** (`/aplicaciones/[slug]`): previsualización embebida del PDF,
+  botón "Regenerar con mi perfil actual" (re-corre todo el pipeline reusando la misma
+  carpeta, útil tras editar el perfil), y un editor de LaTeX avanzado para ajustes finos de
+  último minuto sin volver a llamar al modelo — con el log de compilación completo visible
+  en la UI si algo falla.
+- **Dos formas de conectar con el modelo**, intercambiables por variable de entorno o desde
+  la propia interfaz:
+  - **Modo API**: llamadas directas a la API de Anthropic (`ANTHROPIC_API_KEY`).
+  - **Modo Agente**: sin API key. La web app escribe la tarea en un buzón de archivos
+    (`.claude-tasks/pending/`) y Claude Code —corriendo en una terminal del usuario dentro
+    del repo, ya sea a pedido o mediante un watcher automático (`npm run agent:watch`)—
+    la procesa y devuelve el resultado en `.claude-tasks/done/`. Ambos modos implementan el
+    mismo contrato (`ClaudeConnector`), así que el resto del sistema no distingue cuál se
+    usó.
+- **Generación no bloqueante**: analizar una vacante o generar un CV encola un job y devuelve
+  de inmediato; el cliente hace polling y ve el progreso en vivo (`Analizando...`,
+  `Adaptando tu contenido...`, `Compilando el PDF...`) sin dejar la pestaña colgada.
 
-- [x] Fase 0 — Setup
-- [x] Fase 1 — Extracción (demo)
-- [x] Fase 2 — Interfaz de perfil
-- [x] Fase 3 — Plantillas y compilación
-- [x] Fase 4 — Motor de generación a medida
-- [x] Fase 5 — Carta de presentación
-- [x] Fase 6 — Modo Agente
-- [x] Fase 7 — Pulido
+## Arquitectura
 
-## Decisiones ajustadas durante la construcción (vs. el documento original)
+```mermaid
+flowchart TB
+    subgraph Perfil["Perfil canónico"]
+        PROFILE[(profile.json)]
+        SCHEMA[[profile.schema.json]]
+    end
 
-- **Regla de una página (sección 9.4/9.6):** en vez de un límite duro que recorta contenido
-  automáticamente o bloquea la generación, el máximo de páginas recomendado según años de
-  experiencia se muestra como **retroalimentación en la UI** (ej. "tu CV quedó en 3 páginas;
-  se recomienda máximo 1-2 para tu nivel de experiencia"), pero el usuario decide si recorta
-  o no. Se implementa en la Fase 4.
-- **Plantilla visual secundaria con foto** (ver sección "Plantilla visual" más abajo) --
-  prevista ya en el documento original como opción secundaria, ahora implementada.
-- **Campos bilingües adicionales** (ver sección "Campos bilingües" más abajo).
+    subgraph Extraccion["Extracción desde CV existente"]
+        EXT[Conector Claude<br/>API o Agente]
+    end
 
-## Notas de la Fase 4 (motor de generación a medida)
+    subgraph WebApp["Interfaz web (Next.js)"]
+        UI_EDIT["/perfil"]
+        UI_NEW["/nueva-aplicacion"]
+        UI_HIST["/aplicaciones"]
+    end
 
-- `/nueva-aplicacion`: wizard de 3 pasos (vacante → opciones → resultado).
-- `POST /api/nueva-aplicacion/analyze`: análisis de vacante (sección 9.2) -- devuelve skills
-  técnicas, soft skills, keywords de sector y seniority, siempre en el mismo idioma que el
-  texto de la vacante (clave para el matching léxico ATS).
-- `POST /api/nueva-aplicacion/generate`: orquesta todo el pipeline -- carga `profile.json`,
-  calcula la recomendación de páginas (`experience-years.ts`), llama a `tailorCV` (selección
-  y reescritura de bullets por relevancia a la vacante, sección 9.3), renderiza y compila
-  (ATS o visual), cuenta páginas, y escribe `apps/{empresa}-{puesto}-{fecha}/`.
-- `web/lib/tailoring.ts`: arma el "contenido candidato" (bullets con id, en el idioma
-  destino) que se envía a Claude, y **resuelve la respuesta de vuelta contra el perfil
-  real por id** -- company/rol/fechas nunca se toman de lo que Claude devuelve, solo el
-  texto reescrito y la selección/orden de bullets. Evita que una alucinación del modelo
-  corrompa datos estructurales.
-- `GET /api/apps/[...path]`: sirve `cv.pdf`/`cv.tex`/`job_description.txt` para la
-  previsualización embebida (restringido a `apps/`, sin path traversal).
-- Probado de punta a punta con una vacante real (Junior Software Engineer @ Power Digital):
-  análisis correcto en inglés, selección de bullets relevante sin inventar tecnologías que
-  el candidato no tiene, resultado de 2 páginas con la recomendación (1 página) mostrada
-  como retroalimentación no bloqueante.
-- **Bug real corregido:** el análisis de vacante y la carta de presentación a veces salían
-  en español aunque la vacante/CV estuvieran en inglés (los system prompts están escritos en
-  español, lo que sesgaba al modelo). Se agregó una instrucción explícita de idioma objetivo
-  en cada prompt (`buildTailorCVUserPrompt`/`buildCoverLetterUserPrompt`/análisis), en vez de
-  confiar en "responde en el mismo idioma que el contenido recibido".
+    subgraph Motor["Motor de generación"]
+        ANALYZE[Análisis de vacante]
+        TAILOR[Selección y reescritura<br/>de contenido]
+        RENDER[Render de plantilla LaTeX]
+        COMPILE[Compilación local<br/>tectonic/pdflatex]
+    end
 
-## Notas de la Fase 5 (carta de presentación)
+    subgraph CoverLetter["Carta de presentación"]
+        CL_GEN[Generación de carta]
+    end
 
-- `templates/latex/cover-letter-{es,en}.tex.tpl`: plantilla ATS-safe de una columna (mismo
-  estilo que el CV). `web/lib/latex/render-cover-letter.ts` la rellena reusando
-  `buildContactLine`/`escapeLatex` de render.ts.
-- `generateCoverLetter` en `api-connector.ts`: reusa el mismo `jobAnalysis` del CV (no
-  re-analiza la vacante), y solo genera el CUERPO de la carta -- saludo/fecha/despedida
-  los agrega la plantilla, no el modelo.
-- En `/nueva-aplicacion`, checkbox opcional + elección de formato PDF (compilado) o texto
-  plano (textarea + botón "Copiar", sin compilar). `POST /api/nueva-aplicacion/generate`
-  escribe `cover_letter.pdf`/`.tex` o `cover_letter.txt` junto al CV en la misma carpeta
-  de la aplicación.
-- Probado con la vacante real de Power Digital en ambos formatos e idiomas (PDF en inglés,
-  texto en español) -- contenido coherente, sin inventar logros ni mezclar idiomas.
+    subgraph Salida["apps/{empresa}-{puesto}-{fecha}/"]
+        OUT_CV[cv.pdf + cv.tex]
+        OUT_CL[cover_letter.pdf/txt]
+        OUT_META[metadata.json + job_description.txt]
+    end
+
+    EXT --> PROFILE
+    SCHEMA -. valida .- PROFILE
+    PROFILE <--> UI_EDIT
+    UI_NEW -->|vacante + idioma| ANALYZE
+    PROFILE --> TAILOR
+    ANALYZE --> TAILOR --> RENDER --> COMPILE --> OUT_CV
+    ANALYZE --> CL_GEN --> OUT_CL
+    UI_NEW --> OUT_META
+    OUT_CV --> UI_HIST
+```
+
+### Conectores con el modelo (API / Agente)
+
+Ambos modos implementan la misma interfaz, de modo que el editor y el motor de generación no
+necesitan saber cuál está activo:
+
+```ts
+interface ClaudeConnector {
+  extractProfile(input: { pdfPath: string; imagePaths: string[] }): Promise<ProfileDraft>;
+  analyzeJob(input: { jobDescription: string }): Promise<JobAnalysis>;
+  tailorCV(input: { profile: Profile; jobAnalysis: JobAnalysis; language: "es" | "en" }): Promise<TailoredContent>;
+  generateCoverLetter(input: { ... }): Promise<string>;
+}
+```
+
+- **`web/lib/claude/api-connector.ts`**: llama al SDK de Anthropic desde el servidor de
+  Next.js (la API key nunca se expone al cliente).
+- **`web/lib/claude/agent-connector.ts`**: escribe la tarea en
+  `.claude-tasks/pending/{task_id}.json`, espera (polling) el resultado en
+  `.claude-tasks/done/{task_id}.result.json`, y reintenta el parseo del archivo unos
+  segundos si lo encuentra a medio escribir antes de darlo por corrupto. `CLAUDE.md` en la
+  raíz del repo documenta el contrato exacto de cada tipo de tarea para que Claude Code lo
+  procese con el mismo criterio que el modo API (mismos prompts, en `web/lib/claude/prompts.ts`).
+- **`npm run agent:watch`**: vigila el buzón y usa el CLI headless de Claude Code
+  (`claude -p`) para resolver cada tarea automáticamente en cuanto aparece, sin que haya que
+  pedirlo a mano cada vez.
+- **`web/lib/claude/get-connector.ts`**: elige el conector activo según `CLAUDE_MODE` en
+  `.env`, con posibilidad de override puntual desde la UI.
+
+### Plantillas y compilación LaTeX
+
+- `templates/latex/cv-{es,en}.tex.tpl`: plantillas **ATS-safe** — una columna, sin tablas,
+  iconos ni imágenes, tipografía estándar. `web/lib/latex/render.ts` las rellena escapando
+  correctamente los caracteres especiales de LaTeX (`&`, `%`, `_`, `#`, `$`, etc.).
+- `templates/latex/cv-visual.tex.tpl`: plantilla secundaria con foto, iconos y color, para
+  enviar directo a un humano (**no ATS-safe**, no usar para aplicar por sistemas
+  automatizados).
+- `templates/latex/cover-letter-{es,en}.tex.tpl`: misma línea visual de una columna que el
+  CV ATS-safe.
+- `web/lib/latex/compile.ts` ejecuta `tectonic` (o `pdflatex` si `LATEX_ENGINE=pdflatex`) y
+  guarda el log completo de compilación junto al PDF, tanto en éxito como en fallo.
+- `web/lib/latex/page-count.ts` verifica el número real de páginas del PDF compilado con
+  `pdf-lib`.
+
+## Estructura del repositorio
+
+```
+update-cv/
+├── data/
+│   ├── raw/                    # CV fuente (PDF + imágenes) para la extracción inicial
+│   ├── profile.json            # Perfil canónico (fuente de verdad)
+│   ├── profile.draft.json      # Borrador de la última extracción, pendiente de revisión
+│   └── profile.schema.json     # JSON Schema del perfil
+├── apps/                       # Una carpeta por cada aplicación de empleo generada
+│   └── {empresa}-{puesto}-{YYYYMMDD}/
+│       ├── job_description.txt
+│       ├── cv.tex / cv.pdf
+│       ├── cover_letter.tex / .pdf / .txt   (si aplica)
+│       └── metadata.json
+├── templates/latex/             # Plantillas .tex.tpl ATS-safe y visual
+├── web/                         # Aplicación Next.js
+│   ├── app/                     # Rutas: /perfil, /nueva-aplicacion, /aplicaciones, /api/*
+│   ├── components/
+│   ├── lib/
+│   │   ├── claude/               # Conectores API/Agente, prompts, contrato común
+│   │   ├── latex/                 # render, compile, page-count
+│   │   ├── validation/            # profile.zod.ts, generation.zod.ts
+│   │   ├── tailoring.ts           # arma el contenido enviado a Claude y resuelve la
+│   │   │                          # respuesta de vuelta contra el perfil real por id
+│   │   ├── generation-pipeline.ts # orquesta analizar → adaptar → renderizar → compilar
+│   │   ├── jobs.ts                # cola de jobs en memoria (generación no bloqueante)
+│   │   └── experience-years.ts    # calcula años de experiencia para la recomendación de páginas
+│   └── scripts/                  # extract-profile, test-latex-pipeline, agent-watch
+├── .claude-tasks/                # Buzón de tareas del modo Agente (gitignored)
+├── CLAUDE.md                     # Contrato de tareas para Claude Code en modo Agente
+└── README.md
+```
 
 ## Requisitos
 
 - Node.js 20+ y npm (probado con Node 26 / npm 11).
 - `tectonic` instalado en el sistema (compilador LaTeX). Alternativa: `pdflatex` (TeXLive).
-  - Arch Linux: `sudo pacman -S tectonic`
-  - Si el mirror falla (404), primero refresca mirrors: `sudo pacman -Syyu`, o instala
-    desde AUR: `paru -S tectonic-bin`.
-  - Otras plataformas: ver https://tectonic-typesetting.github.io/en-US/install.html
+  - Arch Linux: `sudo pacman -S tectonic` (o `paru -S tectonic-bin` desde AUR si el mirror
+    falla).
+  - Otras plataformas: https://tectonic-typesetting.github.io/en-US/install.html
 - Una `ANTHROPIC_API_KEY` si vas a usar el modo API (no es necesaria si solo usas el modo
   Agente vía Claude Code). Se obtiene en https://console.anthropic.com/
 
-## Arranque desde cero
+## Arranque
 
 ```bash
 git clone <este-repo>
 cd update-cv
 
-# Variables de entorno
 cp .env.example .env
 # Edita .env y agrega tu ANTHROPIC_API_KEY si vas a usar modo API
 
-# Instalar dependencias de la web app
 cd web
 npm install
-
-# Levantar el servidor de desarrollo
 npm run dev
-# Abre http://localhost:3000
+# http://localhost:3000
 
-# (Opcional) Si vas a usar modo Agente (sin ANTHROPIC_API_KEY), en OTRA
-# terminal, para que las tareas se procesen solas sin pedírmelo cada vez:
+# Opcional: si vas a usar modo Agente (sin ANTHROPIC_API_KEY), en otra terminal,
+# para que las tareas se procesen solas sin pedírselo a Claude Code cada vez:
 npm run agent:watch
 ```
 
-## Tus propios datos (si no eres David)
+### Configuración (`.env`)
 
-- `data/raw/` trae como semilla el CV de David Caicedo Samboni **solo para la demo inicial**.
-  Si vas a usar este sistema con tus propios datos, reemplaza el contenido de `data/raw/`
-  con tu propio CV (PDF) e imágenes, y considera sacar `data/` del control de versiones
-  (ver sección 13 de `ARQUITECTURA_update-cv.md`).
-- `data/profile.json` es tu perfil canónico; se crea/edita desde la interfaz web
-  (`/perfil`) o desde el flujo de extracción inicial (Fase 1).
+| Variable | Descripción |
+|---|---|
+| `ANTHROPIC_API_KEY` | Requerida solo si `CLAUDE_MODE` incluye `api`. |
+| `CLAUDE_MODE` | `api` \| `agent` \| `both`. |
+| `CLAUDE_MODEL` | Modelo a usar en modo API. |
+| `DEFAULT_LANGUAGE` | `es` \| `en`. |
+| `JUNIOR_EXPERIENCE_YEARS_THRESHOLD` | Años de experiencia bajo los cuales se recomienda 1 página. |
+| `MAX_PAGES_SENIOR` | Máximo de páginas recomendado por encima del umbral anterior. |
+| `LATEX_ENGINE` | `tectonic` \| `pdflatex`. |
+| `AGENT_POLL_INTERVAL_MS` / `AGENT_TASK_TIMEOUT_MS` | Frecuencia de polling y timeout del modo Agente desde la web app. |
+| `AGENT_WATCH_POLL_INTERVAL_MS` / `AGENT_WATCH_TASK_TIMEOUT_MS` / `AGENT_WATCH_CLAUDE_BIN` | Configuración del watcher (`npm run agent:watch`). |
 
-## Estructura del repositorio
+## Usar tus propios datos
 
-Ver sección 5 de `ARQUITECTURA_update-cv.md`. Resumen:
+- `data/raw/` trae como semilla un CV de ejemplo solo para la demo inicial. Reemplaza su
+  contenido (PDF + imágenes) con tu propio CV para usar el sistema con tus datos.
+- `data/profile.json` es tu perfil canónico; se crea y edita desde `/perfil`, o a partir del
+  borrador que genera la extracción inicial (`cd web && npm run extract-profile`, o el botón
+  "Importar desde PDF/imágenes" dentro del editor).
+- Nada del sistema está hardcodeado a un usuario específico: cualquiera que clone el repo
+  puede llenar su propio perfil desde cero.
 
-```
-update-cv/
-├── data/                  # profile.json, schema, y datos de semilla (data/raw/)
-├── apps/                  # Salidas: una carpeta por cada aplicación de empleo generada
-├── templates/latex/       # Plantillas .tex.tpl ATS-safe (CV y carta de presentación)
-├── web/                   # Aplicación Next.js (interfaz local)
-├── .claude-tasks/         # Buzón de tareas del modo Agente (gitignored)
-├── CLAUDE.md              # Instrucciones para Claude Code en modo Agente
-└── ARQUITECTURA_update-cv.md
-```
+## Seguridad y privacidad
 
-## Notas de la Fase 0
-
-- `tectonic` no se vendoriza en el repo (decisión confirmada): cada usuario lo instala
-  como binario del sistema. Ver sección "Requisitos" arriba.
-- `data/raw/images/` contiene por ahora capturas de pantalla del CV web actual de David
-  (no fotos físicas de proyectos/certificados) — se usan como apoyo de contexto en la
-  extracción inicial (Fase 1), no como fuente exhaustiva.
-
-## Notas de la Fase 1 (extracción)
-
-- `cd web && npm run extract-profile` procesa `data/raw/` (PDF + imágenes) y escribe
-  `data/profile.draft.json` — un borrador, nunca sobreescribe `data/profile.json`.
-
-## Notas de la Fase 2 (editor de perfil)
-
-- `/perfil` es el editor CRUD completo del perfil. Al entrar, si no existe
-  `data/profile.json` pero sí un `data/profile.draft.json` (de una extracción previa),
-  lo carga automáticamente como punto de partida para revisión.
-- El botón "Importar desde PDF/imágenes" dispara la extracción de nuevo y reemplaza el
-  contenido del formulario (sin guardar) — hay que presionar "Guardar perfil" para
-  confirmarlo como definitivo.
-- El reordenado de bullets/listas usa botones ↑/↓ en vez de drag-and-drop nativo (más
-  confiable entre navegadores).
-
-## Notas de la Fase 3 (plantillas y compilación)
-
-- `templates/latex/cv-{es,en}.tex.tpl`: plantillas ATS-safe (una columna, sin tablas,
-  iconos ni imágenes). `web/lib/latex/render.ts` las rellena con escape correcto de
-  caracteres especiales de LaTeX (`&`, `%`, `_`, `#`, `$`, etc.).
-- `web/lib/latex/compile.ts` ejecuta `tectonic` (o `pdflatex` si `LATEX_ENGINE=pdflatex`
-  en `.env`) y guarda el log completo en `compile.log` junto al PDF, tanto en éxito como
-  en fallo.
-- `web/lib/latex/page-count.ts` verifica el número real de páginas del PDF con `pdf-lib`.
-- Prueba de punta a punta (sin IA, perfil de ejemplo estático):
-  ```bash
-  cd web && npm run test-latex
-  ```
-  Genera `.fase3-test-output/cv-es.pdf`, `cv-en.pdf`, y `.fase3-test-output/visual/cv-visual.pdf`
-  (carpeta gitignored, no es una aplicación real de `apps/`).
-
-### Plantilla visual secundaria (opcional, NO ATS-safe)
-
-- `templates/latex/cv-visual.tex.tpl` + `templates/latex/visual/` (clase `documentMETADATA.cls`
-  adaptada de un derivado de Awesome-CV/YAAC aportado por el usuario, + fuentes Source Sans Pro).
-  Con foto, iconos y color -- solo para enviar directo a un humano, nunca para ATS.
-- Requiere que `personal.photo_path` apunte a una imagen real en `data/raw/images/`.
-- `web/lib/latex/render-visual.ts` arma el `.tex` con los macros de esa clase;
-  `prepareVisualAssets()` copia `documentMETADATA.cls`, `fonts/`, y la foto junto al `.tex`
-  antes de compilar (tectonic los necesita en el mismo directorio).
-- La clase original tenía dos bugs reales que se corrigieron al adaptarla: (1) usaba
-  `luainputenc`, exclusivo de LuaLaTeX, que rompía con tectonic (motor XeTeX) -- se quitó,
-  ya que XeTeX maneja UTF-8 nativamente vía `fontspec`; (2) el comando de foto usaba una
-  clave de `tikz` (`fill overzoom image`) que nunca estaba definida -- se reemplazó por
-  `\includegraphics` estándar.
-- Selector para elegir esta plantilla en el wizard llega en la Fase 4.
-- Los íconos de encabezado de sección se redujeron a `\normalsize` (el título del section
-  queda en `\Large`) para menos saturación visual y más espacio para texto.
-
-### Campos bilingües (corrección de idioma mixto)
-
-Varios campos de texto libre eran de un solo idioma y por eso el CV generado en un idioma
-mostraba texto suelto en el otro (ej. el "tagline" bajo el nombre seguía en inglés en la
-versión en español). Ahora tienen variantes `_es`/`_en`, igual que los bullets:
-
-- `personal.headline` → `headline_es` / `headline_en`
-- `founded_companies[].role` → `role_es` / `role_en`, `.description` → `description_es` / `description_en`
-- `experience[].role` → `role_es` / `role_en`
-- `education[].degree` → `degree_es` / `degree_en`
-- `technical_skills[].category` → `category_es` / `category_en`
-- `soft_skills[]`: de `string[]` a `{ text_es, text_en }[]`
-- `languages[]`: `language`/`level` → `language_es`/`language_en`/`level_es`/`level_en`
-
-Los nombres propios (`company`, `institution`, `name` de empresa) NO se traducen.
-
-## Notas de la Fase 6 (modo Agente)
-
-- `web/lib/claude/agent-connector.ts`: implementa el mismo `ClaudeConnector` que
-  `api-connector.ts`, pero escribiendo una tarea en `.claude-tasks/pending/{task_id}.json` y
-  esperando (polling) el resultado en `.claude-tasks/done/{task_id}.result.json`. La petición
-  HTTP queda bloqueada hasta que el resultado aparece o se cumple `AGENT_TASK_TIMEOUT_MS`
-  (decisión tomada con el usuario: bloqueo simple con timeout largo en vez de un flujo de
-  2 pasos con botón "verificar" -- más simple para un MVP personal).
-- `web/lib/claude/get-connector.ts`: fábrica que elige `ApiConnector`/`AgentConnector` según
-  `CLAUDE_MODE` en `.env`, con posibilidad de override puntual (`claudeMode`/`mode` en el
-  body de las rutas, y un selector en `/nueva-aplicacion` y en el botón de importar de
-  `/perfil`).
-- `CLAUDE.md`: instrucciones completas para que Claude Code procese cada tipo de tarea
-  (`extract_profile`, `analyze_job`, `tailor_cv`, `generate_cover_letter`), con la forma
-  exacta de entrada/salida de cada una, remitiendo a `web/lib/claude/prompts.ts` para
-  mantener paridad con el modo API.
-- Variables nuevas en `.env.example`: `AGENT_POLL_INTERVAL_MS` (default 3000) y
-  `AGENT_TASK_TIMEOUT_MS` (default 900000 = 15 min).
-- Probado de punta a punta simulando manualmente el rol de Claude Code (escribir el
-  resultado en `.claude-tasks/done/`): la tarea se crea, la petición queda esperando, el
-  resultado se recoge correctamente y el archivo de `pending/` se limpia. También se probó
-  el camino de timeout (sin nadie procesando la tarea): mensaje de error claro con el `task_id`
-  y la ruta del archivo pendiente.
-
-## Notas de la Fase 7 (pulido)
-
-- `lib/generation-pipeline.ts`: se extrajo toda la lógica de `POST /api/nueva-aplicacion/generate`
-  a una función compartida (`generateApplication`), para no duplicarla con el botón "Regenerar".
-- **`/aplicaciones`**: historial simple ordenado por fecha (sin búsqueda/filtrado, decisión ya
-  tomada) -- lista todas las carpetas de `apps/` con acceso rápido a la vacante original y al
-  detalle de cada una.
-- **`/aplicaciones/[slug]`**: vista de detalle con:
-  - Previsualización del CV (y de la carta, si existe) embebida.
-  - **"Regenerar con mi perfil actual"** (`POST /api/apps/[slug]/regenerate`): re-corre todo
-    el pipeline (análisis + tailorCV + render + compile) reusando la MISMA carpeta (no crea
-    una con la fecha de hoy) -- útil después de editar tu perfil.
-  - **Editor de LaTeX avanzado** (`POST /api/apps/[slug]/recompile`): edita el `.tex` a mano y
-    recompila sin volver a llamar a Claude, para ajustes finos de último minuto. Si la
-    compilación falla, el mensaje de error de `tectonic`/`pdflatex` (resumen del log +
-    ruta al log completo) se muestra directamente en la UI.
-- Probado con las aplicaciones reales ya generadas: listado correcto, regeneración reusando
-  la misma carpeta (verificado que no duplica), y el editor avanzado -- incluyendo forzar un
-  error de compilación real (`\undefinedcommandxyz`) para confirmar que el mensaje de error
-  llega completo y legible a la UI, luego restaurado sin dejar la aplicación rota.
-
-## Mejoras post-Fase 7 (2026-08-27)
-
-**1. Certificaciones seleccionadas por vacante + soft skills reescritas.** `tailorCV`
-(sección 9.3) ahora recibe también `certifications_compliance` en el contenido del
-candidato y las trata igual que el resto: selecciona SOLO las relevantes para esa vacante
-específica (ej. no mostrar una certificación de diseño CAD en una vacante de backend) en
-vez de mostrar siempre todas las del perfil. `soft_skills` pasó de solo "filtrar/reordenar"
-a poder **reescribirse** con el mismo tono/vocabulario de la vacante, siempre que siga
-representando una habilidad real del candidato (mismo guardrail anti-invención que ya
-existía para bullets: `tailoring.ts` descarta cualquier certificación que Claude devuelva y
-que no exista literalmente en el perfil real). Probado en modo API con una vacante de
-backend contra el perfil real (que solo tenía una certificación de CAD): el resultado la
-excluyó consistentemente en 3 corridas, y las soft skills se reescribieron con vocabulario
-de la vacante ("colaboración en equipos multidisciplinarios", etc.).
-
-**2. Modo Agente no bloqueante + watcher automático.** Dos problemas de UX reales del modo
-Agente original: (a) la UI mantenía la petición HTTP abierta hasta 15 min esperando a que el
-usuario, en otra terminal, le pidiera a Claude Code que procesara la tarea; (b) había que
-repetir ese pedido manualmente por cada paso del flujo (analizar vacante, luego generar).
-Se resolvió con dos piezas (decisión tomada con el usuario vía `AskUserQuestion`):
-- **`web/lib/jobs.ts`**: cola de jobs en memoria del proceso de `next dev`/`next start`.
-  `POST /api/nueva-aplicacion/{analyze,generate}` y `POST /api/apps/[slug]/regenerate` ya
-  no bloquean -- encolan el trabajo, responden de inmediato con `{ jobId }`, y el cliente
-  hace polling a `GET /api/jobs/[jobId]` (`web/lib/client/poll-job.ts`) viendo el progreso
-  en vivo (`stage`: "Analizando...", "Adaptando tu contenido...", "Compilando el PDF...",
-  etc.) sin tener la pestaña "colgada". Es intencionalmente en memoria (no persistente):
-  encaja con los supuestos de diseño de un sistema 100% local de un solo usuario (sección
-  3) -- si el servidor se reinicia a mitad de un job, se pierde y el cliente lo ve como un
-  404 al pollear, no como un error silencioso.
-- **`npm run agent:watch`** (`web/scripts/agent-watch.ts`): un watcher que vigila
-  `.claude-tasks/pending/` y usa el CLI headless de Claude Code (`claude -p
-  --permission-mode acceptEdits --allowedTools "Read Write Glob Grep"`) para procesar cada
-  tarea apenas aparece, una detrás de otra, sin que el usuario tenga que volver a pedírmelo
-  cada vez -- se deja corriendo en una terminal aparte mientras se generan cuantas
-  aplicaciones se quiera desde la UI. Sigue las mismas instrucciones de `CLAUDE.md` (única
-  fuente de verdad, no se duplicó criterio). Nuevas variables en `.env.example`:
-  `AGENT_WATCH_POLL_INTERVAL_MS`, `AGENT_WATCH_TASK_TIMEOUT_MS`, `AGENT_WATCH_CLAUDE_BIN`.
-  El flujo manual (pedirle a Claude Code "procesa las tareas pendientes" en una terminal)
-  se mantiene disponible como alternativa -- el watcher es opcional, no reemplaza el
-  contrato del buzón.
-- Probado de punta a punta: `POST /api/nueva-aplicacion/analyze` en modo API devuelve
-  `jobId` de inmediato y el polling refleja `running` → `done` con el resultado correcto;
-  una tarea real escrita a mano en `.claude-tasks/pending/` fue recogida y resuelta por
-  `agent:watch` en ~12s usando `claude -p` de verdad, sin intervención manual.
-- **Fix de robustez (2026-08-26):** el archivo de resultado no se escribe de forma atómica,
-  así que había una ventana real en la que la web app lo veía ya creado pero aún a medio
-  escribir y fallaba con "resultado no es JSON válido" sobre un archivo que segundos después
-  era perfectamente válido. `agent-connector.ts` ahora reintenta el parseo (hasta 5 veces,
-  al ritmo de `AGENT_POLL_INTERVAL_MS`) antes de dar la tarea por corrupta de verdad. Además,
-  `.claude-tasks/done/{task_id}.result.json` ahora se borra apenas se consume y valida (antes
-  quedaba acumulando archivos indefinidamente -- son efímeros, no hay razón para conservarlos).
-
-## Limpieza y auditoría del repo (2026-08-27)
-
-Pasada de limpieza sin cambios funcionales, tras escanear todo el repo:
-
-- Se quitaron los SVG de scaffold de `create-next-app` en `web/public/` (`file.svg`,
-  `globe.svg`, `next.svg`, `vercel.svg`, `window.svg`) -- no se referenciaban en ningún
-  lado del código.
-- Se quitaron dos tipos exportados sin ningún uso (`Bullet`, `Project` en
-  `profile.zod.ts`) -- quedaron huérfanos de refactors anteriores; `Profile`/`Experience`
-  (que sí se usan) se conservan.
-- `.claude-tasks/done/` ahora se autolimpia (ver fix de robustez arriba) en vez de acumular
-  un archivo por cada tarea procesada para siempre.
-- Verificado (no se tocó, sigue siendo necesario): dependencias de `package.json` todas en
-  uso, `data/profile.draft.json` es un borrador real y activo del flujo de `/perfil` (no
-  data de prueba obsoleta), `web/scripts/test-latex-pipeline.ts` sigue siendo el smoke test
-  del pipeline LaTeX sin gastar llamadas a Claude, tamaño total versionado en git ~3.6 MB
-  (sin contar `node_modules`/`.next`, ya ignorados) sin binarios sueltos fuera de lugar.
-
-## Backlog (para más adelante, no bloqueante)
-
-Pendientes explícitamente pospuestos por el usuario el 2026-08-27 -- no se ha empezado
-ninguno de estos:
-
-1. **UI/UX refinada**: pulir la interfaz más allá de lo funcional (hoy es deliberadamente
-   utilitaria/Tailwind por defecto).
-2. **CLI/instalación más versátil para desarrolladores**: que arrancar el sistema sea lo
-   más parecido a "clona el repo y ya" (o un único comando tipo `npm install && npm run
-   setup`) en vez de los pasos manuales actuales de `## Arranque desde cero` (copiar
-   `.env`, instalar tectonic aparte, etc.).
-3. **Modo accesible para usuarios no técnicos**: explorar cómo alguien sin conocimientos
-   técnicos podría usar el sistema sin clonar un repo ni tocar una terminal (ej. un
-   despliegue web hosteado) -- **nota de diseño importante**: esto choca de frente con el
-   supuesto de diseño de la sección 3 del documento de arquitectura ("100% local, sin
-   servidor propio, tus datos no salen de tu máquina salvo hacia la API de Claude que tú
-   autorizas"), así que si se retoma esto habría que decidir explícitamente con el usuario
-   si se relaja ese supuesto (y qué implica para privacidad/datos) o si se busca una
-   alternativa que lo mantenga (ej. un instalador de un clic, no un servicio hosteado
-   multiusuario).
+- El sistema corre localmente: no hay backend externo ni base de datos remota.
+- `ANTHROPIC_API_KEY` solo se usa del lado del servidor (API routes de Next.js), nunca se
+  expone al cliente.
+- `.env` y `.claude-tasks/` están fuera de control de versiones. `apps/` también está
+  gitignored por defecto, ya que cada aplicación generada guarda el texto completo de una
+  vacante específica.
+- `GET /api/apps/[...path]` (usado para previsualizar PDFs/`.tex` embebidos) está
+  restringido a la carpeta `apps/`, sin permitir path traversal fuera de ella.

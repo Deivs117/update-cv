@@ -1,7 +1,8 @@
 # Instrucciones para Claude Code operando en modo Agente sobre `update-cv`
 
 Este archivo es leído por Claude Code cuando el usuario lo invoca dentro de este repo para
-procesar tareas del **modo Agente** (ver sección 7.3 y 16-Fase 6 de `ARQUITECTURA_update-cv.md`).
+procesar tareas del **modo Agente** (ver "Conectores con el modelo (API / Agente)" en el
+`README.md`).
 
 El modo Agente existe para poder usar el sistema **sin `ANTHROPIC_API_KEY`**: la web app
 escribe una tarea en `.claude-tasks/pending/`, y tú (Claude Code, corriendo en una terminal
@@ -122,6 +123,7 @@ orientativo, no obligatorio de cumplir a la fuerza. Todo el texto que generes de
   (revisa `web/lib/claude/prompts.ts` — varias instrucciones insisten en esto porque el
   modelo tiende a responder en español por defecto si no se le pide explícitamente lo
   contrario).
-- Sigue las reglas de la plantilla ATS-safe (sección 9.5 de `ARQUITECTURA_update-cv.md`) en
-  cualquier texto libre que generes: sin markdown, sin caracteres LaTeX sin escapar (el
-  escape lo hace `render.ts` del lado de la web app, tú solo entregas texto plano).
+- Sigue las reglas de la plantilla ATS-safe ("Plantillas y compilación LaTeX" en el
+  `README.md`) en cualquier texto libre que generes: sin markdown, sin caracteres LaTeX sin
+  escapar (el escape lo hace `render.ts` del lado de la web app, tú solo entregas texto
+  plano).
