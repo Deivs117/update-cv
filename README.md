@@ -224,6 +224,30 @@ npm run agent:watch
 | `AGENT_POLL_INTERVAL_MS` / `AGENT_TASK_TIMEOUT_MS` | Frecuencia de polling y timeout del modo Agente desde la web app. |
 | `AGENT_WATCH_POLL_INTERVAL_MS` / `AGENT_WATCH_TASK_TIMEOUT_MS` / `AGENT_WATCH_CLAUDE_BIN` | Configuración del watcher (`npm run agent:watch`). |
 
+## Contribuir
+
+Los commits y los títulos de PR siguen [Conventional Commits](https://www.conventionalcommits.org/)
+(`tipo(área): mensaje`), con `tipo` uno de: `feat, fix, chore, docs, refactor, test, style,
+perf, ci`. Esto se valida de dos formas:
+
+- **Localmente**, con un hook `commit-msg` de [pre-commit](https://pre-commit.com/)
+  (`.pre-commit-config.yaml`, hook `conventional-pre-commit`). Instalación (una vez por
+  clon):
+
+  ```bash
+  # Instala pre-commit si no lo tenés (elegí una):
+  pipx install pre-commit
+  # o
+  uv tool install pre-commit
+
+  # Dentro del repo:
+  pre-commit install --hook-type commit-msg
+  ```
+
+- **En CI**, el workflow `.github/workflows/pr-title.yml` valida el título del PR con los
+  mismos tipos permitidos — sirve de espejo para quien no tenga el hook instalado
+  localmente.
+
 ## Usar tus propios datos
 
 - `data/raw/` trae como semilla un CV de ejemplo solo para la demo inicial. Reemplaza su
