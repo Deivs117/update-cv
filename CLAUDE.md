@@ -1,13 +1,16 @@
 # Instrucciones para Claude Code sobre `update-cv`
 
-Este archivo cubre dos cosas distintas, que comparten la palabra "agente" pero no tienen
-relación entre sí — no confundirlas:
+Este archivo cubre tres cosas distintas, dos de las cuales comparten la palabra "agente"
+sin tener relación entre sí — no confundirlas:
 
 1. **Orquestación del backlog** (sección inmediatamente debajo): cómo Claude Code decide
    entre subagentes en paralelo o trabajo secuencial al desarrollar los tickets del
    [GitHub Project](https://github.com/users/Deivs117/projects/9). Aplica a cualquier
    sesión trabajando en este repo, siempre.
-2. **Modo Agente** (a partir de "Cuando el usuario te pida..." más abajo): el contrato de
+2. **Flujo de ramas, worktrees y Kanban**: cómo se nombran/organizan las ramas, por qué todo
+   trabajo con commits pasa por un `git worktree`, y cuándo mover un ticket entre columnas
+   del Project. Aplica siempre también.
+3. **Modo Agente** (a partir de "Cuando el usuario te pida..." más abajo): el contrato de
    tareas del buzón `.claude-tasks/`, que es una **funcionalidad del producto** `update-cv`
    (ver "Conectores con el modelo (API / Agente)" en el `README.md`) — solo aplica cuando
    el usuario pide explícitamente procesar esas tareas.
@@ -39,6 +42,85 @@ trabajo sigue esta regla:
 - Nunca paralelizar tareas con dependencia real entre sí solo porque el usuario pidió
   paralelizar el grupo completo — identificar primero cuáles subtareas sí son
   independientes dentro del grupo, y limitar los subagentes a esas.
+
+---
+
+## Flujo de ramas, worktrees y Kanban
+
+Trunk-based, sin rama `develop` — cada PR/rama ya obtiene su propio preview de Vercel, así
+que una rama de staging intermedia no aporta nada en un proyecto de este tamaño (a
+diferencia de `PruebasCorteGrabadoLaser`, que sí usa GitFlow completo por ser un equipo más
+grande; ver decisión tomada en la planeación de `feature/deploy`, issue #19).
+
+```
+main                                ← producción, deploy automático (Vercel)
+ └── feature/<categoría>            ← repo / data / backend / deploy / frontend (permanentes)
+       └── <sub-rama por ticket>    ej. repo-branch-flow-3
+```
+
+- Las tareas puntuales salen de la rama de categoría correspondiente (`feature/repo`,
+  `feature/data`, `feature/backend`, `feature/deploy`, `feature/frontend`), nunca directo de
+  `main`.
+- Orden de promoción, siempre por PR: sub-rama → `feature/<categoría>` → `main`. Cada salto
+  corre el CI (`.github/workflows/ci.yml`).
+- Todo commit sigue Conventional Commits (`tipo(área): mensaje`, ver
+  `.pre-commit-config.yaml`) y todo PR referencia un ticket (`Closes #N`/`Refs #N`, ver
+  `.github/PULL_REQUEST_TEMPLATE.md`) — es lo que da trazabilidad entre código y el
+  [Project](https://github.com/users/Deivs117/projects/9).
+
+### `git worktree` obligatorio para toda tarea con rama/commits
+
+Nunca trabajar una rama nueva directo en el directorio principal del repo — ni una sesión
+agéntica ni una humana. Un worktree aísla físicamente los archivos de cada tarea, así dos
+sesiones (o una sesión y el propio usuario) pueden trabajar en paralelo sin pisarse:
+
+```
+git fetch origin
+git worktree add ../wt-<algo-descriptivo> -b <categoría>-<slug>-<issue> origin/feature/<categoría>
+```
+
+Al terminar y mergear la tarea: **cerrar el worktree ANTES de borrar la rama**, no después —
+`gh pr merge <n> --merge --delete-branch` falla con `cannot delete branch ... used by
+worktree` si el worktree sigue abierto (pasó varias veces mergeando los tickets de este
+mismo milestone). Orden correcto:
+
+```
+git worktree remove ../wt-<algo> --force
+gh pr merge <n> --merge --delete-branch
+```
+
+Si el borrado remoto ya falló por esto, `git branch -d <sub-rama>` (local) y
+`git push origin --delete <sub-rama>` (remoto) por separado, una vez cerrado el worktree.
+
+### Estado del ticket en el Project (Kanban)
+
+El [Project](https://github.com/users/Deivs117/projects/9) (número 9, owner `Deivs117`)
+tiene 5 columnas (campo `Status`, id `PVTSSF_lAHOCM1xRc4BjM5lzhiCJfY` del proyecto
+`PVT_kwHOCM1xRc4BjM5l`) y el ticket tiene que reflejar en qué paso real está:
+
+| Columna | Cuándo mover el ticket acá | Option id |
+|---|---|---|
+| **Backlog** | Existe pero no está priorizado/asignado a un milestone activo todavía. | `09e0374b` |
+| **Todo** | Priorizado, sin bloqueos — el siguiente que se toma. | `f75ad846` |
+| **In Progress** | Apenas se abre el worktree/rama de la tarea — no al terminarla. | `47fc9ee4` |
+| **In Revision** | Código completo, PR(s) abiertos/mergeados subiendo por la cadena de ramas (sub-rama → `feature/<categoría>`) pero todavía no en `main`. | `2e03ba67` |
+| **Done** | Recién cuando llegó a `main` (desplegado a producción) — nunca antes, aunque el código ya esté "terminado" en `feature/<categoría>`. | `98236657` |
+
+Agregar un issue nuevo al Project (paso aparte de `gh issue create`):
+
+```
+gh project item-add 9 --owner Deivs117 --url <url-del-issue>
+```
+
+Mover el estado:
+
+```
+gh project item-edit --project-id PVT_kwHOCM1xRc4BjM5l --id <item-id> \
+  --field-id PVTSSF_lAHOCM1xRc4BjM5lzhiCJfY --single-select-option-id <option-id>
+```
+
+El `item-id` (no es el número del issue) sale del `item-add` de arriba o de
+`gh project item-list 9 --owner Deivs117`.
 
 ---
 
