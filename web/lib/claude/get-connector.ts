@@ -3,12 +3,21 @@
  * también como override puntual en /nueva-aplicacion"). CLAUDE_MODE en .env
  * define qué modos están habilitados en este servidor ("api" | "agent" |
  * "both"); el caller puede pedir un modo puntual si está permitido.
+ *
+ * Dentro del modo "api", MODEL_PROVIDER elige a cuál proveedor de modelo se
+ * llama (issue #32) -- anthropic | google | nvidia, todos implementando el
+ * mismo ClaudeConnector (api-connector.ts, gemini-connector.ts,
+ * nvidia-nim-connector.ts), así que el resto del sistema no distingue cuál
+ * está activo. El modo "agent" (Claude Code) es independiente de esto.
  */
 import { ApiConnector } from "@/lib/claude/api-connector";
 import { AgentConnector } from "@/lib/claude/agent-connector";
+import { GeminiConnector } from "@/lib/claude/gemini-connector";
+import { NvidiaNimConnector } from "@/lib/claude/nvidia-nim-connector";
 import { ClaudeConnectorError, type ClaudeConnector } from "@/lib/claude/connector.interface";
 
 export type ClaudeMode = "api" | "agent";
+export type ModelProvider = "anthropic" | "google" | "nvidia";
 
 function getAllowedModes(): Set<ClaudeMode> {
   const raw = process.env.CLAUDE_MODE?.trim().toLowerCase();
@@ -31,7 +40,33 @@ export function resolveClaudeMode(requestedMode?: ClaudeMode): ClaudeMode {
   return mode;
 }
 
+/**
+ * Resuelve MODEL_PROVIDER. Default explícito "anthropic" (compatibilidad con
+ * instalaciones existentes de antes de que este proveedor existiera) --
+ * .env.example, en cambio, ya trae MODEL_PROVIDER=google como valor
+ * recomendado para instalaciones nuevas, dado que hoy no hay créditos de
+ * Anthropic activos.
+ */
+export function resolveModelProvider(): ModelProvider {
+  const raw = process.env.MODEL_PROVIDER?.trim().toLowerCase();
+  if (raw === "google") return "google";
+  if (raw === "nvidia") return "nvidia";
+  if (raw && raw !== "anthropic") {
+    throw new ClaudeConnectorError(
+      `MODEL_PROVIDER="${raw}" no es válido. Usa "anthropic", "google" o "nvidia".`,
+    );
+  }
+  return "anthropic";
+}
+
+function createApiConnector(): ClaudeConnector {
+  const provider = resolveModelProvider();
+  if (provider === "google") return new GeminiConnector();
+  if (provider === "nvidia") return new NvidiaNimConnector();
+  return new ApiConnector();
+}
+
 export function getConnector(requestedMode?: ClaudeMode): ClaudeConnector {
   const mode = resolveClaudeMode(requestedMode);
-  return mode === "agent" ? new AgentConnector() : new ApiConnector();
+  return mode === "agent" ? new AgentConnector() : createApiConnector();
 }
