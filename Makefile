@@ -1,4 +1,4 @@
-.PHONY: help install dev build start lint check extract-profile test-latex agent-watch
+.PHONY: help install dev build start lint typecheck check extract-profile test-latex agent-watch
 
 # Deteccion de SO
 ifeq ($(OS),Windows_NT)
@@ -24,7 +24,8 @@ help:
 	@echo "  make build           - Compilar la app para produccion (next build)"
 	@echo "  make start           - Levantar la app ya compilada (next start)"
 	@echo "  make lint            - Revisar estilo de codigo con eslint"
-	@echo "  make check           - lint + build (typecheck se suma cuando exista el script)"
+	@echo "  make typecheck       - Revisar tipos con tsc"
+	@echo "  make check           - lint + typecheck + build"
 	@echo "  make extract-profile - Extraer un borrador de perfil desde data/raw/ (PDF/imagenes)"
 	@echo "  make test-latex      - Probar el pipeline de render + compilacion LaTeX"
 	@echo "  make agent-watch     - Vigilar .claude-tasks/ y resolver tareas del modo Agente"
@@ -61,12 +62,12 @@ lint:
 	@echo "Revisando estilo de codigo con eslint..."
 	cd $(WEB_DIR) && npm run lint
 
-# NOTA: web/package.json todavia no tiene un script "typecheck" (issue #4 en
-# curso). En cuanto exista, sumarlo aqui como
-#   cd $(WEB_DIR) && npm run typecheck
-# antes del build, para que "make check" sea lint + typecheck + build.
-check: lint build
-	@echo "lint + build: todo en orden (typecheck pendiente de que exista el script, ver issue #4)."
+typecheck:
+	@echo "Revisando tipos con tsc..."
+	cd $(WEB_DIR) && npm run typecheck
+
+check: lint typecheck build
+	@echo "lint + typecheck + build: todo en orden."
 
 # ============================================
 # MODO AGENTE Y HERRAMIENTAS DEL PERFIL
