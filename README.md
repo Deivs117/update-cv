@@ -193,6 +193,10 @@ update-cv/
 
 ## Arranque
 
+Hay un `Makefile` en la raíz que envuelve los scripts de `web/package.json` como interfaz
+única de comandos (`make help` lista todo). Es opcional: seguir usando `npm run <script>`
+directo desde `web/` funciona exactamente igual si lo preferís.
+
 ```bash
 git clone <este-repo>
 cd update-cv
@@ -200,15 +204,27 @@ cd update-cv
 cp .env.example .env
 # Edita .env y agrega tu ANTHROPIC_API_KEY si vas a usar modo API
 
-cd web
-npm install
-npm run dev
+make install
+make dev
 # http://localhost:3000
 
 # Opcional: si vas a usar modo Agente (sin ANTHROPIC_API_KEY), en otra terminal,
 # para que las tareas se procesen solas sin pedírselo a Claude Code cada vez:
+make agent-watch
+```
+
+Equivalente sin `make`:
+
+```bash
+cd web
+npm install
+npm run dev
+# en otra terminal, opcional:
 npm run agent:watch
 ```
+
+Otros comandos disponibles vía `make` (ver `make help`): `make build`, `make start`,
+`make lint`, `make check` (lint + build), `make extract-profile`, `make test-latex`.
 
 ### Configuración (`.env`)
 
