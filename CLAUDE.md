@@ -122,6 +122,45 @@ gh project item-edit --project-id PVT_kwHOCM1xRc4BjM5l --id <item-id> \
 El `item-id` (no es el número del issue) sale del `item-add` de arriba o de
 `gh project item-list 9 --owner Deivs117`.
 
+### Gestión de secretos: CLI autenticada, nunca copiados a mano
+
+Cuando el proyecto tenga entornos hosteados (Vercel/Supabase, ver `feature/data` y
+`feature/deploy` en el Project), las credenciales de cada entorno **nunca se guardan en el
+repo** — ni en texto plano ni cifradas, ni siquiera en uno privado. La clave para descifrar
+un secreto cifrado en git es en sí misma un secreto que hay que gestionar aparte, así que
+esa vía no elimina el problema, solo lo mueve.
+
+El patrón correcto es autenticar la CLI de cada plataforma **una sola vez por máquina**
+(el token queda fuera del repo, en la config local de la CLI), y pedirle a la CLI ya
+autenticada las credenciales vigentes de cualquier entorno cuando hagan falta — nunca
+copiarlas a mano desde un dashboard:
+
+```
+# Una vez por máquina:
+vercel login
+supabase login
+
+# Cuando haga falta un entorno específico, sin volver a pegar nada:
+vercel env pull --environment=development .env.local
+vercel env pull --environment=preview .env.preview
+vercel env pull --environment=production .env.production.local
+
+supabase link --project-ref <ref-dev-preview>   # o <ref-produccion>, aparte
+```
+
+**Política de confirmación en producción:** que la CLI esté autenticada no significa que
+cualquier sesión (agéntica o no) pueda tocar producción sin más. Antes de correr una
+migración, un `db push`, o cualquier cambio contra el proyecto Supabase/Vercel de
+**producción**, hay que pedir confirmación explícita al usuario en el momento — nunca
+asumir que la autenticación local ya es suficiente autorización para ese cambio puntual.
+Esto aplica aunque el comando sea técnicamente idéntico al que ya se corrió sin pedir
+permiso contra dev/preview.
+
+`.env.example` documentará qué variables vienen de cada entorno (dev/preview vs.
+producción) a medida que existan — eso se agrega junto con los tickets de `feature/data`
+que provisionan Supabase (#7) y Vercel (#20), no acá: documentar variables que todavía no
+existen sería más confuso que útil.
+
 ---
 
 ## Modo Agente (funcionalidad del producto)
