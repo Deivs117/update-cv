@@ -131,6 +131,14 @@ interface ClaudeConnector {
   pedirlo a mano cada vez.
 - **`web/lib/claude/get-connector.ts`**: elige el conector activo según `CLAUDE_MODE` en
   `.env`, con posibilidad de override puntual desde la UI.
+- **Proveedor de modelo dentro del modo API** (`MODEL_PROVIDER`): `anthropic` (Anthropic,
+  requiere créditos), `google` (Gemini/AI Studio — **recomendado**, free tier real sin
+  tarjeta de crédito ni expiración, cubre `extractProfile` con el mismo proveedor que el
+  resto de tareas porque es multimodal) o `nvidia` (build.nvidia.com, free tier permanente,
+  catálogo de 100+ modelos open-weight vía API compatible con OpenAI — para
+  `extractProfile` exige además `NVIDIA_NIM_VISION_MODEL`, porque a diferencia de los otros
+  dos no soporta PDF nativo, solo imágenes). Los tres implementan el mismo `ClaudeConnector`
+  (`api-connector.ts` / `gemini-connector.ts` / `nvidia-nim-connector.ts`).
 
 ### Plantillas y compilación LaTeX
 
@@ -224,15 +232,18 @@ npm run agent:watch
 ```
 
 Otros comandos disponibles vía `make` (ver `make help`): `make build`, `make start`,
-`make lint`, `make check` (lint + build), `make extract-profile`, `make test-latex`.
+`make lint`, `make typecheck`, `make check` (lint + typecheck + build), `make extract-profile`,
+`make test-latex`.
 
 ### Configuración (`.env`)
 
 | Variable | Descripción |
 |---|---|
-| `ANTHROPIC_API_KEY` | Requerida solo si `CLAUDE_MODE` incluye `api`. |
 | `CLAUDE_MODE` | `api` \| `agent` \| `both`. |
-| `CLAUDE_MODEL` | Modelo a usar en modo API. |
+| `MODEL_PROVIDER` | Proveedor de modelo dentro del modo API: `anthropic` \| `google` (recomendado) \| `nvidia`. |
+| `ANTHROPIC_API_KEY` / `CLAUDE_MODEL` | Requeridas solo si `MODEL_PROVIDER=anthropic`. |
+| `GOOGLE_API_KEY` / `GOOGLE_MODEL` | Requeridas solo si `MODEL_PROVIDER=google`. Gratis en [aistudio.google.com/apikey](https://aistudio.google.com/apikey). |
+| `NVIDIA_NIM_API_KEY` / `NVIDIA_NIM_MODEL` / `NVIDIA_NIM_VISION_MODEL` | Requeridas solo si `MODEL_PROVIDER=nvidia` (la última, solo para `extractProfile`). Gratis en [build.nvidia.com](https://build.nvidia.com). |
 | `DEFAULT_LANGUAGE` | `es` \| `en`. |
 | `JUNIOR_EXPERIENCE_YEARS_THRESHOLD` | Años de experiencia bajo los cuales se recomienda 1 página. |
 | `MAX_PAGES_SENIOR` | Máximo de páginas recomendado por encima del umbral anterior. |
