@@ -37,7 +37,9 @@ import {
 import { jobAnalysisSchema, tailorRawResponseSchema } from "@/lib/validation/generation.zod";
 import { buildCandidateContent, resolveTailoredContent } from "@/lib/tailoring";
 
-const DEFAULT_MODEL = "gemini-2.5-flash";
+// gemini-2.5-flash ya no está disponible para cuentas nuevas (verificado
+// contra una llamada real -- la API responde 404 recomendando este modelo).
+const DEFAULT_MODEL = "gemini-3.6-flash";
 const EXTRACTION_MAX_TOKENS = 16000;
 const ANALYSIS_MAX_TOKENS = 2000;
 const TAILOR_MAX_TOKENS = 8000;
@@ -85,9 +87,14 @@ function imageMimeType(filePath: string): string {
 }
 
 /** Detecta si un error de la API de Gemini es un rate limit (429 / RESOURCE_EXHAUSTED). */
+/**
+ * Detecta errores transitorios que vale la pena reintentar: 429 (rate limit
+ * real del free tier) y 503/UNAVAILABLE (saturación temporal del modelo,
+ * visto en la práctica contra gemini-3.6-flash -- no es un error del cliente).
+ */
 function isRateLimitError(err: unknown): boolean {
   const message = err instanceof Error ? err.message : String(err);
-  return /\b429\b|RESOURCE_EXHAUSTED|rate.?limit/i.test(message);
+  return /\b429\b|\b503\b|RESOURCE_EXHAUSTED|UNAVAILABLE|rate.?limit/i.test(message);
 }
 
 function sleep(ms: number): Promise<void> {
