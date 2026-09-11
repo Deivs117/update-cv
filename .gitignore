@@ -2,6 +2,13 @@
 .env
 .env.local
 
+# Skills de Claude Code: locales por defecto (herramientas de quien desarrolla, no
+# documentación del proyecto) — excepto modo-agente/, que sí es funcionalidad del
+# producto y tiene que viajar con el repo (ver CLAUDE.md).
+.claude/skills/*
+!.claude/skills/modo-agente/
+!.claude/skills/modo-agente/**
+
 # Buzón de tareas del modo Agente (efímero, no se versiona)
 .claude-tasks/pending/*
 .claude-tasks/done/*
