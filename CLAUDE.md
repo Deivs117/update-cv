@@ -1,15 +1,55 @@
-# Instrucciones para Claude Code operando en modo Agente sobre `update-cv`
+# Instrucciones para Claude Code sobre `update-cv`
 
-Este archivo es leído por Claude Code cuando el usuario lo invoca dentro de este repo para
-procesar tareas del **modo Agente** (ver "Conectores con el modelo (API / Agente)" en el
-`README.md`).
+Este archivo cubre dos cosas distintas, que comparten la palabra "agente" pero no tienen
+relación entre sí — no confundirlas:
+
+1. **Orquestación del backlog** (sección inmediatamente debajo): cómo Claude Code decide
+   entre subagentes en paralelo o trabajo secuencial al desarrollar los tickets del
+   [GitHub Project](https://github.com/users/Deivs117/projects/9). Aplica a cualquier
+   sesión trabajando en este repo, siempre.
+2. **Modo Agente** (a partir de "Cuando el usuario te pida..." más abajo): el contrato de
+   tareas del buzón `.claude-tasks/`, que es una **funcionalidad del producto** `update-cv`
+   (ver "Conectores con el modelo (API / Agente)" en el `README.md`) — solo aplica cuando
+   el usuario pide explícitamente procesar esas tareas.
+
+---
+
+## Orquestación del backlog: subagentes en paralelo vs. trabajo secuencial
+
+Al trabajar un conjunto de tareas relacionado (típicamente todos los issues de un milestone
+del Project, o el subconjunto que el usuario defina), la decisión de cómo repartir el
+trabajo sigue esta regla:
+
+- **Primero, el agente maestro (quien planea, no un subagente) evalúa si el grupo tiene
+  capacidad real de paralelización**: ¿hay tareas del grupo que no dependan entre sí, no
+  toquen el mismo archivo/módulo, y cuyo resultado no bloquee a otra tarea del mismo grupo?
+  No se asume paralelizable solo porque los tickets comparten milestone — varios issues de
+  un mismo milestone pueden tener dependencia secuencial real entre sí (ver el orden de
+  dependencias documentado en cada milestone).
+- **Si hay capacidad de paralelización Y el usuario pide explícitamente lanzar
+  subagentes**, se reparte el grupo en subagentes — uno por tarea o por sub-grupo
+  independiente — cada uno operando en su propio `git worktree` para no pisarse (criterio
+  de ramas/worktrees: ver #3 una vez esté documentado).
+- **Si no hay paralelización posible** (las tareas dependen entre sí — una debe
+  terminar/fusionarse antes de que la siguiente tenga sentido), un solo agente las resuelve
+  **secuencialmente**, una detrás de otra, hasta agotar el grupo completo, sin esperar a que
+  el usuario pida lanzar subagentes en cada paso — ese es el modo por defecto.
+- Lanzar subagentes en paralelo **requiere pedido explícito del usuario cada vez**, nunca es
+  una decisión unilateral del agente maestro aunque detecte que el grupo es paralelizable.
+- Nunca paralelizar tareas con dependencia real entre sí solo porque el usuario pidió
+  paralelizar el grupo completo — identificar primero cuáles subtareas sí son
+  independientes dentro del grupo, y limitar los subagentes a esas.
+
+---
+
+## Modo Agente (funcionalidad del producto)
 
 El modo Agente existe para poder usar el sistema **sin `ANTHROPIC_API_KEY`**: la web app
 escribe una tarea en `.claude-tasks/pending/`, y tú (Claude Code, corriendo en una terminal
 del usuario dentro de este repo) la procesas y escribes el resultado en `.claude-tasks/done/`.
 La web app queda esperando (polling) ese resultado.
 
-## Cuando el usuario te pida "procesar tareas pendientes" (o similar)
+### Cuando el usuario te pida "procesar tareas pendientes" (o similar)
 
 1. Lee todos los archivos `.json` en `.claude-tasks/pending/`.
 2. Para cada uno, según su campo `"type"`, sigue la sección correspondiente más abajo.
@@ -28,7 +68,7 @@ modo Agente y el modo API produzcan resultados equivalentes.
 
 ---
 
-## `extract_profile` (Módulo 1, sección 7)
+### `extract_profile` (Módulo 1, sección 7)
 
 **Entrada** (campos de la tarea):
 - `input_pdf`: ruta relativa al PDF del CV.
@@ -45,7 +85,7 @@ contrario; omite lo que no puedas determinar con confianza.
 
 ---
 
-## `analyze_job` (Módulo 3, sección 9.2)
+### `analyze_job` (Módulo 3, sección 9.2)
 
 **Entrada:** `job_description` (texto completo de la vacante).
 
@@ -66,7 +106,7 @@ por defecto al español.
 
 ---
 
-## `tailor_cv` (Módulo 3, sección 9.3)
+### `tailor_cv` (Módulo 3, sección 9.3)
 
 **Entrada:**
 - `candidate_content`: JSON con el contenido disponible del candidato (`summary`,
@@ -99,7 +139,7 @@ orientativo, no obligatorio de cumplir a la fuerza. Todo el texto que generes de
 
 ---
 
-## `generate_cover_letter` (Módulo 4, sección 10)
+### `generate_cover_letter` (Módulo 4, sección 10)
 
 **Entrada:** `candidate_content`, `job_description`, `job_analysis`, `company`, `role`,
 `language` (mismos campos que `tailor_cv` más `company`/`role`).
@@ -115,7 +155,7 @@ orientativo, no obligatorio de cumplir a la fuerza. Todo el texto que generes de
 
 ---
 
-## Reglas generales
+### Reglas generales
 
 - Nunca sobrescribas `data/profile.json` directamente — solo el usuario, desde el editor
   web, confirma y persiste cambios al perfil.
