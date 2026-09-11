@@ -45,6 +45,18 @@ trabajo sigue esta regla:
 
 ---
 
+## Nunca dejar nada deprecado
+
+Ninguna dependencia, versión de lenguaje/runtime, acción de CI, API o función usada en este
+repo puede quedar en una versión marcada como deprecada — ni "todavía funciona, ya se
+arreglará después". Antes de fijar una versión en cualquier config nueva (CI, `package.json`,
+runtime, etc.), verificar cuál es la versión activa/soportada vigente (no asumir de memoria
+— las ventanas de soporte cambian; confirmar contra la fuente oficial del proyecto en
+cuestión). Si una dependencia ya en uso pasa a estar deprecada, es motivo suficiente para un
+ticket de actualización, no algo que esperar a que rompa.
+
+---
+
 ## Flujo de ramas, worktrees y Kanban
 
 Trunk-based, sin rama `develop` — cada PR/rama ya obtiene su propio preview de Vercel, así
