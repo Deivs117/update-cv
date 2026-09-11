@@ -149,6 +149,7 @@ Para la versión hosteada (en construcción, ver el [Project](https://github.com
 - **`jobs`**: cola de progreso del pipeline de generación en modo hosteado, reemplaza la cola en memoria de `web/lib/jobs.ts`.
 - **RLS declarativo** (`pgPolicy` de `drizzle-orm/supabase`): cada usuario solo puede leer/escribir sus propias filas — el policy se genera junto con el `CREATE TABLE`, no aparte.
 - **Drizzle Kit** (`make db-generate/db-migrate/db-push/db-studio`, o `npm run db:*` dentro de `web/`) gestiona las migraciones. `schemaFilter: ["public"]` en `drizzle.config.ts` evita que se intente recrear `auth.users` (ya lo gestiona Supabase Auth) — aun así, la primera migración generada necesitó un ajuste manual para quitar un `CREATE TABLE "auth"."users"` que `drizzle-kit` insertó de todas formas (issue conocida de la integración Drizzle+Supabase, documentada como comentario en la propia migración).
+- **`web/lib/storage/supabase-storage.ts`**: bucket privado `generated-pdfs` (nunca público) para los PDFs generados. Sube/borra archivos y genera URLs firmadas de corta duración (5 min por defecto) con `SUPABASE_SECRET_KEY` — únicamente del lado del servidor, la URL firmada nunca se guarda en la base de datos (se genera al vuelo en cada request), solo la ruta dentro del bucket queda en `applications.cv_pdf_path`/`cover_letter_pdf_path`.
 
 ### Plantillas y compilación LaTeX
 
