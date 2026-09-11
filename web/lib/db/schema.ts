@@ -1,0 +1,187 @@
+/**
+ * Schema del modo hosteado (Supabase/Postgres) -- issue #8. Modelo híbrido
+ * decidido en la planeación: columnas reales donde hay necesidad real de
+ * filtrar/ordenar/relacionar, JSONB para el contenido anidado que siempre se
+ * carga/escribe completo (mismo criterio que profile.schema.json hoy).
+ *
+ * Reemplaza data/profile.json y apps/{slug}/metadata.json en modo hosteado
+ * (STORAGE_MODE=hosted, ver #13) -- el modo local sigue usando el filesystem
+ * sin tocar este archivo.
+ *
+ * RLS declarativo con drizzle-orm/supabase (authenticatedRole): cada usuario
+ * solo puede leer/escribir sus propias filas. Un policy nuevo en una tabla
+ * habilita RLS automáticamente (no hace falta enableRLS() aparte); si una
+ * tabla no tuviera ningún policy, Postgres deniega todo por defecto.
+ */
+import { sql } from "drizzle-orm";
+import {
+  jsonb,
+  pgPolicy,
+  pgSchema,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+} from "drizzle-orm/pg-core";
+import { authenticatedRole } from "drizzle-orm/supabase";
+
+/**
+ * Referencia al schema `auth` que ya gestiona Supabase Auth -- no lo creamos
+ * nosotros, solo declaramos su forma para poder tener foreign keys reales
+ * hacia auth.users.id (patrón estándar de la integración Supabase+Drizzle).
+ */
+const authSchema = pgSchema("auth");
+export const authUsers = authSchema.table("users", {
+  id: uuid("id").primaryKey(),
+});
+
+/** Un perfil por cuenta (1:1) -- id = auth.uid() directo, sin tabla intermedia. */
+export const profiles = pgTable(
+  "profiles",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .references(() => authUsers.id, { onDelete: "cascade" }),
+    /** Misma forma que profile.schema.json / profileDraftSchema (Zod) hoy. */
+    data: jsonb("data").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    pgPolicy("profiles_select_own", {
+      for: "select",
+      to: authenticatedRole,
+      using: sql`${table.id} = auth.uid()`,
+    }),
+    pgPolicy("profiles_insert_own", {
+      for: "insert",
+      to: authenticatedRole,
+      withCheck: sql`${table.id} = auth.uid()`,
+    }),
+    pgPolicy("profiles_update_own", {
+      for: "update",
+      to: authenticatedRole,
+      using: sql`${table.id} = auth.uid()`,
+      withCheck: sql`${table.id} = auth.uid()`,
+    }),
+    pgPolicy("profiles_delete_own", {
+      for: "delete",
+      to: authenticatedRole,
+      using: sql`${table.id} = auth.uid()`,
+    }),
+  ],
+);
+
+export const applicationStatus = [
+  "draft",
+  "analyzing",
+  "generating",
+  "compiling",
+  "done",
+  "error",
+] as const;
+
+/** Una fila por aplicación de empleo generada -- reemplaza apps/{slug}/ en modo hosteado. */
+export const applications = pgTable(
+  "applications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => authUsers.id, { onDelete: "cascade" }),
+    company: text("company").notNull(),
+    role: text("role").notNull(),
+    language: text("language").notNull(), // "es" | "en"
+    status: text("status").notNull().default("draft"),
+    jobDescription: text("job_description").notNull(),
+    /** Salida de tailorCV -- misma forma que TailoredContent (connector.interface.ts). */
+    tailoredContent: jsonb("tailored_content"),
+    /** Rutas dentro del bucket privado de Storage (#10), no URLs firmadas. */
+    cvPdfPath: text("cv_pdf_path"),
+    coverLetterPdfPath: text("cover_letter_pdf_path"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    pgPolicy("applications_select_own", {
+      for: "select",
+      to: authenticatedRole,
+      using: sql`${table.userId} = auth.uid()`,
+    }),
+    pgPolicy("applications_insert_own", {
+      for: "insert",
+      to: authenticatedRole,
+      withCheck: sql`${table.userId} = auth.uid()`,
+    }),
+    pgPolicy("applications_update_own", {
+      for: "update",
+      to: authenticatedRole,
+      using: sql`${table.userId} = auth.uid()`,
+      withCheck: sql`${table.userId} = auth.uid()`,
+    }),
+    pgPolicy("applications_delete_own", {
+      for: "delete",
+      to: authenticatedRole,
+      using: sql`${table.userId} = auth.uid()`,
+    }),
+  ],
+);
+
+export const jobStage = [
+  "analyzing",
+  "tailoring",
+  "rendering",
+  "compiling",
+  "done",
+] as const;
+
+export const jobStatus = ["pending", "running", "done", "error"] as const;
+
+/**
+ * Cola de jobs para el pipeline de generación en modo hosteado (#15) --
+ * reemplaza la cola en memoria de web/lib/jobs.ts, que no sobrevive entre
+ * invocaciones de una función serverless.
+ */
+export const jobs = pgTable(
+  "jobs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => authUsers.id, { onDelete: "cascade" }),
+    applicationId: uuid("application_id").references(() => applications.id, {
+      onDelete: "set null",
+    }),
+    stage: text("stage"),
+    status: text("status").notNull().default("pending"),
+    errorMessage: text("error_message"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    pgPolicy("jobs_select_own", {
+      for: "select",
+      to: authenticatedRole,
+      using: sql`${table.userId} = auth.uid()`,
+    }),
+    pgPolicy("jobs_insert_own", {
+      for: "insert",
+      to: authenticatedRole,
+      withCheck: sql`${table.userId} = auth.uid()`,
+    }),
+    pgPolicy("jobs_update_own", {
+      for: "update",
+      to: authenticatedRole,
+      using: sql`${table.userId} = auth.uid()`,
+      withCheck: sql`${table.userId} = auth.uid()`,
+    }),
+    // Sin policy de delete a propósito: los jobs son historial de progreso,
+    // no hace falta que el usuario final los borre (a diferencia de jobs.ts
+    // en memoria, que sí se descartaba solo).
+  ],
+);
+
+export type Profile = typeof profiles.$inferSelect;
+export type NewProfile = typeof profiles.$inferInsert;
+export type Application = typeof applications.$inferSelect;
+export type NewApplication = typeof applications.$inferInsert;
+export type Job = typeof jobs.$inferSelect;
+export type NewJob = typeof jobs.$inferInsert;

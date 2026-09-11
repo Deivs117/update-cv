@@ -140,6 +140,16 @@ interface ClaudeConnector {
   dos no soporta PDF nativo, solo imágenes). Los tres implementan el mismo `ClaudeConnector`
   (`api-connector.ts` / `gemini-connector.ts` / `nvidia-nim-connector.ts`).
 
+### Persistencia hosteada (Supabase/Postgres)
+
+Para la versión hosteada (en construcción, ver el [Project](https://github.com/users/Deivs117/projects/9)), `web/lib/db/schema.ts` define el schema en Drizzle ORM que reemplaza el filesystem (`data/profile.json`, `apps/{slug}/`) cuando `STORAGE_MODE=hosted` — modelo híbrido: columnas reales donde hay necesidad de filtrar/ordenar (`applications`, `jobs`), JSONB para el contenido anidado que siempre se carga completo (`profiles.data`, mismo shape que `profile.schema.json` hoy).
+
+- **`profiles`**: un perfil por cuenta (`id` = `auth.uid()`, sin tabla intermedia).
+- **`applications`**: una fila por aplicación generada, con `tailored_content` (JSONB) y las rutas (no URLs firmadas) de los PDFs en el bucket privado de Storage.
+- **`jobs`**: cola de progreso del pipeline de generación en modo hosteado, reemplaza la cola en memoria de `web/lib/jobs.ts`.
+- **RLS declarativo** (`pgPolicy` de `drizzle-orm/supabase`): cada usuario solo puede leer/escribir sus propias filas — el policy se genera junto con el `CREATE TABLE`, no aparte.
+- **Drizzle Kit** (`make db-generate/db-migrate/db-push/db-studio`, o `npm run db:*` dentro de `web/`) gestiona las migraciones. `schemaFilter: ["public"]` en `drizzle.config.ts` evita que se intente recrear `auth.users` (ya lo gestiona Supabase Auth) — aun así, la primera migración generada necesitó un ajuste manual para quitar un `CREATE TABLE "auth"."users"` que `drizzle-kit` insertó de todas formas (issue conocida de la integración Drizzle+Supabase, documentada como comentario en la propia migración).
+
 ### Plantillas y compilación LaTeX
 
 - `templates/latex/cv-{es,en}.tex.tpl`: plantillas **ATS-safe** — una columna, sin tablas,
