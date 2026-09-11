@@ -193,6 +193,10 @@ update-cv/
 
 ## Arranque
 
+Hay un `Makefile` en la raíz que envuelve los scripts de `web/package.json` como interfaz
+única de comandos (`make help` lista todo). Es opcional: seguir usando `npm run <script>`
+directo desde `web/` funciona exactamente igual si lo preferís.
+
 ```bash
 git clone <este-repo>
 cd update-cv
@@ -200,15 +204,27 @@ cd update-cv
 cp .env.example .env
 # Edita .env y agrega tu ANTHROPIC_API_KEY si vas a usar modo API
 
-cd web
-npm install
-npm run dev
+make install
+make dev
 # http://localhost:3000
 
 # Opcional: si vas a usar modo Agente (sin ANTHROPIC_API_KEY), en otra terminal,
 # para que las tareas se procesen solas sin pedírselo a Claude Code cada vez:
+make agent-watch
+```
+
+Equivalente sin `make`:
+
+```bash
+cd web
+npm install
+npm run dev
+# en otra terminal, opcional:
 npm run agent:watch
 ```
+
+Otros comandos disponibles vía `make` (ver `make help`): `make build`, `make start`,
+`make lint`, `make check` (lint + build), `make extract-profile`, `make test-latex`.
 
 ### Configuración (`.env`)
 
@@ -223,6 +239,30 @@ npm run agent:watch
 | `LATEX_ENGINE` | `tectonic` \| `pdflatex`. |
 | `AGENT_POLL_INTERVAL_MS` / `AGENT_TASK_TIMEOUT_MS` | Frecuencia de polling y timeout del modo Agente desde la web app. |
 | `AGENT_WATCH_POLL_INTERVAL_MS` / `AGENT_WATCH_TASK_TIMEOUT_MS` / `AGENT_WATCH_CLAUDE_BIN` | Configuración del watcher (`npm run agent:watch`). |
+
+## Contribuir
+
+Los commits y los títulos de PR siguen [Conventional Commits](https://www.conventionalcommits.org/)
+(`tipo(área): mensaje`), con `tipo` uno de: `feat, fix, chore, docs, refactor, test, style,
+perf, ci`. Esto se valida de dos formas:
+
+- **Localmente**, con un hook `commit-msg` de [pre-commit](https://pre-commit.com/)
+  (`.pre-commit-config.yaml`, hook `conventional-pre-commit`). Instalación (una vez por
+  clon):
+
+  ```bash
+  # Instala pre-commit si no lo tenés (elegí una):
+  pipx install pre-commit
+  # o
+  uv tool install pre-commit
+
+  # Dentro del repo:
+  pre-commit install --hook-type commit-msg
+  ```
+
+- **En CI**, el workflow `.github/workflows/pr-title.yml` valida el título del PR con los
+  mismos tipos permitidos — sirve de espejo para quien no tenga el hook instalado
+  localmente.
 
 ## Usar tus propios datos
 
