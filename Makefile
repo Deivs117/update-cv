@@ -1,4 +1,4 @@
-.PHONY: help install dev build start lint typecheck check extract-profile test-latex agent-watch
+.PHONY: help install dev build start lint typecheck check extract-profile test-latex agent-watch db-generate db-migrate db-push db-studio
 
 # Deteccion de SO
 ifeq ($(OS),Windows_NT)
@@ -29,6 +29,10 @@ help:
 	@echo "  make extract-profile - Extraer un borrador de perfil desde data/raw/ (PDF/imagenes)"
 	@echo "  make test-latex      - Probar el pipeline de render + compilacion LaTeX"
 	@echo "  make agent-watch     - Vigilar .claude-tasks/ y resolver tareas del modo Agente"
+	@echo "  make db-generate     - Generar una migracion SQL desde lib/db/schema.ts (sin DB real)"
+	@echo "  make db-migrate      - Aplicar migraciones pendientes (requiere DATABASE_URL)"
+	@echo "  make db-push         - Aplicar el schema directo, sin migracion versionada (solo dev/preview)"
+	@echo "  make db-studio       - Abrir Drizzle Studio contra DATABASE_URL"
 
 # ============================================
 # INSTALACION Y DEPENDENCIAS
@@ -84,3 +88,26 @@ test-latex:
 agent-watch:
 	@echo "Vigilando .claude-tasks/ para resolver tareas del modo Agente..."
 	cd $(WEB_DIR) && npm run agent:watch
+
+# ============================================
+# BASE DE DATOS (Supabase/Postgres, modo hosteado -- issue #8/#9)
+# ============================================
+# db-migrate/db-push/db-studio requieren DATABASE_URL en el entorno -- ver
+# lib/db/client.ts y la sección "Gestión de secretos" de CLAUDE.md (nunca
+# copiada a mano, se pide a la CLI de Supabase ya autenticada).
+
+db-generate:
+	@echo "Generando migracion SQL desde lib/db/schema.ts..."
+	cd $(WEB_DIR) && npm run db:generate
+
+db-migrate:
+	@echo "Aplicando migraciones pendientes..."
+	cd $(WEB_DIR) && npm run db:migrate
+
+db-push:
+	@echo "Aplicando el schema directo (sin migracion versionada, solo dev/preview)..."
+	cd $(WEB_DIR) && npm run db:push
+
+db-studio:
+	@echo "Abriendo Drizzle Studio..."
+	cd $(WEB_DIR) && npm run db:studio

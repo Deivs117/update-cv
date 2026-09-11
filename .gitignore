@@ -25,6 +25,10 @@ apps/*
 # Salida de prueba del pipeline LaTeX (Fase 3), no es una aplicación real
 .fase3-test-output/
 
+# Caché local del CLI de Supabase (link del proyecto, versión) -- efímero,
+# no se versiona, mismo criterio que .claude-tasks/.
+supabase/.temp/
+
 # Node / Next.js (web/)
 web/node_modules/
 web/.next/

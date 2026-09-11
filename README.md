@@ -131,6 +131,24 @@ interface ClaudeConnector {
   pedirlo a mano cada vez.
 - **`web/lib/claude/get-connector.ts`**: elige el conector activo según `CLAUDE_MODE` en
   `.env`, con posibilidad de override puntual desde la UI.
+- **Proveedor de modelo dentro del modo API** (`MODEL_PROVIDER`): `anthropic` (Anthropic,
+  requiere créditos), `google` (Gemini/AI Studio — **recomendado**, free tier real sin
+  tarjeta de crédito ni expiración, cubre `extractProfile` con el mismo proveedor que el
+  resto de tareas porque es multimodal) o `nvidia` (build.nvidia.com, free tier permanente,
+  catálogo de 100+ modelos open-weight vía API compatible con OpenAI — para
+  `extractProfile` exige además `NVIDIA_NIM_VISION_MODEL`, porque a diferencia de los otros
+  dos no soporta PDF nativo, solo imágenes). Los tres implementan el mismo `ClaudeConnector`
+  (`api-connector.ts` / `gemini-connector.ts` / `nvidia-nim-connector.ts`).
+
+### Persistencia hosteada (Supabase/Postgres)
+
+Para la versión hosteada (en construcción, ver el [Project](https://github.com/users/Deivs117/projects/9)), `web/lib/db/schema.ts` define el schema en Drizzle ORM que reemplaza el filesystem (`data/profile.json`, `apps/{slug}/`) cuando `STORAGE_MODE=hosted` — modelo híbrido: columnas reales donde hay necesidad de filtrar/ordenar (`applications`, `jobs`), JSONB para el contenido anidado que siempre se carga completo (`profiles.data`, mismo shape que `profile.schema.json` hoy).
+
+- **`profiles`**: un perfil por cuenta (`id` = `auth.uid()`, sin tabla intermedia).
+- **`applications`**: una fila por aplicación generada, con `tailored_content` (JSONB) y las rutas (no URLs firmadas) de los PDFs en el bucket privado de Storage.
+- **`jobs`**: cola de progreso del pipeline de generación en modo hosteado, reemplaza la cola en memoria de `web/lib/jobs.ts`.
+- **RLS declarativo** (`pgPolicy` de `drizzle-orm/supabase`): cada usuario solo puede leer/escribir sus propias filas — el policy se genera junto con el `CREATE TABLE`, no aparte.
+- **Drizzle Kit** (`make db-generate/db-migrate/db-push/db-studio`, o `npm run db:*` dentro de `web/`) gestiona las migraciones. `schemaFilter: ["public"]` en `drizzle.config.ts` evita que se intente recrear `auth.users` (ya lo gestiona Supabase Auth) — aun así, la primera migración generada necesitó un ajuste manual para quitar un `CREATE TABLE "auth"."users"` que `drizzle-kit` insertó de todas formas (issue conocida de la integración Drizzle+Supabase, documentada como comentario en la propia migración).
 
 ### Plantillas y compilación LaTeX
 
@@ -224,15 +242,18 @@ npm run agent:watch
 ```
 
 Otros comandos disponibles vía `make` (ver `make help`): `make build`, `make start`,
-`make lint`, `make check` (lint + build), `make extract-profile`, `make test-latex`.
+`make lint`, `make typecheck`, `make check` (lint + typecheck + build), `make extract-profile`,
+`make test-latex`.
 
 ### Configuración (`.env`)
 
 | Variable | Descripción |
 |---|---|
-| `ANTHROPIC_API_KEY` | Requerida solo si `CLAUDE_MODE` incluye `api`. |
 | `CLAUDE_MODE` | `api` \| `agent` \| `both`. |
-| `CLAUDE_MODEL` | Modelo a usar en modo API. |
+| `MODEL_PROVIDER` | Proveedor de modelo dentro del modo API: `anthropic` \| `google` (recomendado) \| `nvidia`. |
+| `ANTHROPIC_API_KEY` / `CLAUDE_MODEL` | Requeridas solo si `MODEL_PROVIDER=anthropic`. |
+| `GOOGLE_API_KEY` / `GOOGLE_MODEL` | Requeridas solo si `MODEL_PROVIDER=google`. Gratis en [aistudio.google.com/apikey](https://aistudio.google.com/apikey). |
+| `NVIDIA_NIM_API_KEY` / `NVIDIA_NIM_MODEL` / `NVIDIA_NIM_VISION_MODEL` | Requeridas solo si `MODEL_PROVIDER=nvidia` (la última, solo para `extractProfile`). Gratis en [build.nvidia.com](https://build.nvidia.com). |
 | `DEFAULT_LANGUAGE` | `es` \| `en`. |
 | `JUNIOR_EXPERIENCE_YEARS_THRESHOLD` | Años de experiencia bajo los cuales se recomienda 1 página. |
 | `MAX_PAGES_SENIOR` | Máximo de páginas recomendado por encima del umbral anterior. |

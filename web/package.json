@@ -10,13 +10,21 @@
     "typecheck": "next typegen && tsc --noEmit",
     "extract-profile": "tsx scripts/extract-profile.ts",
     "test-latex": "tsx scripts/test-latex-pipeline.ts",
-    "agent:watch": "tsx scripts/agent-watch.ts"
+    "agent:watch": "tsx scripts/agent-watch.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.120.0",
+    "@google/genai": "^2.22.0",
     "dotenv": "^17.4.2",
+    "drizzle-orm": "^0.45.2",
     "next": "16.3.3",
+    "openai": "^7.15.0",
     "pdf-lib": "^1.17.1",
+    "postgres": "^3.4.9",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "zod": "^4.4.3"
@@ -26,6 +34,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "16.3.3",
     "tailwindcss": "^4",
