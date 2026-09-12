@@ -9,6 +9,7 @@
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "extract-profile": "tsx scripts/extract-profile.ts",
+    "migrate-local-data": "tsx scripts/migrate-local-data.ts",
     "test-latex": "tsx scripts/test-latex-pipeline.ts",
     "agent:watch": "tsx scripts/agent-watch.ts",
     "db:generate": "drizzle-kit generate",
@@ -19,6 +20,8 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.120.0",
     "@google/genai": "^2.22.0",
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.116.0",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
     "next": "16.3.3",
