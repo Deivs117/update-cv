@@ -1,6 +1,9 @@
 # Secretos y configuración local
 .env
 .env.local
+# Respaldo local de tokens de control de cuenta (Supabase, etc.) mientras no
+# exista el manejo de secretos de Vercel -- ver CLAUDE.md "Gestión de secretos".
+.secrets.local.md
 
 # Skills de Claude Code: locales por defecto (herramientas de quien desarrolla, no
 # documentación del proyecto) — excepto modo-agente/, que sí es funcionalidad del
@@ -21,6 +24,10 @@ apps/*
 
 # Salida de prueba del pipeline LaTeX (Fase 3), no es una aplicación real
 .fase3-test-output/
+
+# Caché local del CLI de Supabase (link del proyecto, versión) -- efímero,
+# no se versiona, mismo criterio que .claude-tasks/.
+supabase/.temp/
 
 # Node / Next.js (web/)
 web/node_modules/

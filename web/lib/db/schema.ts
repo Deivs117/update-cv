@@ -15,10 +15,12 @@
  */
 import { sql } from "drizzle-orm";
 import {
+  integer,
   jsonb,
   pgPolicy,
   pgSchema,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uuid,
@@ -179,9 +181,43 @@ export const jobs = pgTable(
   ],
 );
 
+/**
+ * Cuotas de uso por cuenta (issue #18): una fila por usuario por día (UTC).
+ * Solo aplica en modo hosteado, donde una única ANTHROPIC_API_KEY (o la del
+ * proveedor que sea) paga por el uso de todos -- sin esto, una cuenta podría
+ * disparar el costo sin límite.
+ *
+ * A propósito, SOLO tiene policy de SELECT: el usuario puede ver su propia
+ * cuota restante (para mostrarla en la UI), pero nunca puede escribir su
+ * propia fila -- eso solo lo hace el servidor con la secret key (que
+ * bypassea RLS), así ningún cliente puede inflar o resetear su cuota
+ * llamando directo a la API de Supabase.
+ */
+export const usageCounters = pgTable(
+  "usage_counters",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => authUsers.id, { onDelete: "cascade" }),
+    /** Día UTC (YYYY-MM-DD) al que corresponde el contador -- ver usage-quota.ts. */
+    period: text("period").notNull(),
+    count: integer("count").notNull().default(0),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.period] }),
+    pgPolicy("usage_counters_select_own", {
+      for: "select",
+      to: authenticatedRole,
+      using: sql`${table.userId} = auth.uid()`,
+    }),
+  ],
+);
+
 export type Profile = typeof profiles.$inferSelect;
 export type NewProfile = typeof profiles.$inferInsert;
 export type Application = typeof applications.$inferSelect;
 export type NewApplication = typeof applications.$inferInsert;
 export type Job = typeof jobs.$inferSelect;
 export type NewJob = typeof jobs.$inferInsert;
+export type UsageCounter = typeof usageCounters.$inferSelect;
