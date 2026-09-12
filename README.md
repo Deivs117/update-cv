@@ -150,6 +150,7 @@ Para la versión hosteada (en construcción, ver el [Project](https://github.com
 - **RLS declarativo** (`pgPolicy` de `drizzle-orm/supabase`): cada usuario solo puede leer/escribir sus propias filas — el policy se genera junto con el `CREATE TABLE`, no aparte.
 - **Drizzle Kit** (`make db-generate/db-migrate/db-push/db-studio`, o `npm run db:*` dentro de `web/`) gestiona las migraciones. `schemaFilter: ["public"]` en `drizzle.config.ts` evita que se intente recrear `auth.users` (ya lo gestiona Supabase Auth) — aun así, la primera migración generada necesitó un ajuste manual para quitar un `CREATE TABLE "auth"."users"` que `drizzle-kit` insertó de todas formas (issue conocida de la integración Drizzle+Supabase, documentada como comentario en la propia migración).
 - **`web/lib/storage/supabase-storage.ts`**: bucket privado `generated-pdfs` (nunca público) para los PDFs generados. Sube/borra archivos y genera URLs firmadas de corta duración (5 min por defecto) con `SUPABASE_SECRET_KEY` — únicamente del lado del servidor, la URL firmada nunca se guarda en la base de datos (se genera al vuelo en cada request), solo la ruta dentro del bucket queda en `applications.cv_pdf_path`/`cover_letter_pdf_path`.
+- **Autenticación con Google** (`/login`, `web/lib/supabase/{server,browser}.ts`, `web/proxy.ts`): login vía Supabase Auth + OAuth de Google, con `@supabase/ssr` (clientes separados para Server Components y Client Components) y `proxy.ts` refrescando la sesión en cada request — se llama `proxy.ts`, no `middleware.ts`, porque ese file convention quedó deprecado en Next.js 16. Al crearse una cuenta nueva, un trigger de Postgres (`drizzle/0001_create_profile_on_signup.sql`, `SECURITY DEFINER`) crea automáticamente su fila en `profiles` — la app nunca tiene que decidir "insertar o no".
 
 ### Plantillas y compilación LaTeX
 
@@ -255,6 +256,9 @@ Otros comandos disponibles vía `make` (ver `make help`): `make build`, `make st
 | `ANTHROPIC_API_KEY` / `CLAUDE_MODEL` | Requeridas solo si `MODEL_PROVIDER=anthropic`. |
 | `GOOGLE_API_KEY` / `GOOGLE_MODEL` | Requeridas solo si `MODEL_PROVIDER=google`. Gratis en [aistudio.google.com/apikey](https://aistudio.google.com/apikey). |
 | `NVIDIA_NIM_API_KEY` / `NVIDIA_NIM_MODEL` / `NVIDIA_NIM_VISION_MODEL` | Requeridas solo si `MODEL_PROVIDER=nvidia` (la última, solo para `extractProfile`). Gratis en [build.nvidia.com](https://build.nvidia.com). |
+| `DATABASE_URL` | Modo hosteado (`#7`-`#9`): conexión Postgres del proyecto Supabase, vía el connection pooler (ver nota de IPv6 en `.env.example`). |
+| `SUPABASE_URL` / `SUPABASE_SECRET_KEY` | Modo hosteado (`#10`): mismo proyecto, para Storage del lado del servidor (nunca expuesta al cliente). |
+| `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Modo hosteado (`#11`): mismas credenciales que arriba pero seguras para el navegador — login con Google. |
 | `DEFAULT_LANGUAGE` | `es` \| `en`. |
 | `JUNIOR_EXPERIENCE_YEARS_THRESHOLD` | Años de experiencia bajo los cuales se recomienda 1 página. |
 | `MAX_PAGES_SENIOR` | Máximo de páginas recomendado por encima del umbral anterior. |
