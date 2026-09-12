@@ -27,6 +27,8 @@ help:
 	@echo "  make typecheck       - Revisar tipos con tsc"
 	@echo "  make check           - lint + typecheck + build"
 	@echo "  make extract-profile - Extraer un borrador de perfil desde data/raw/ (PDF/imagenes)"
+	@echo "  make migrate-local-data EMAIL=... [DRY_RUN=1]"
+	@echo "                                              - Subir profile.json y apps/ a una cuenta hosteada (issue #12)"
 	@echo "  make test-latex      - Probar el pipeline de render + compilacion LaTeX"
 	@echo "  make agent-watch     - Vigilar .claude-tasks/ y resolver tareas del modo Agente"
 	@echo "  make db-generate     - Generar una migracion SQL desde lib/db/schema.ts (sin DB real)"
@@ -80,6 +82,14 @@ check: lint typecheck build
 extract-profile:
 	@echo "Extrayendo borrador de perfil desde data/raw/..."
 	cd $(WEB_DIR) && npm run extract-profile
+
+migrate-local-data:
+	@echo "Migrando data/profile.json y apps/ a la cuenta $(EMAIL) (issue #12)..."
+ifdef DRY_RUN
+	cd $(WEB_DIR) && npm run migrate-local-data -- --email $(EMAIL) --dry-run
+else
+	cd $(WEB_DIR) && npm run migrate-local-data -- --email $(EMAIL)
+endif
 
 test-latex:
 	@echo "Probando el pipeline de render + compilacion LaTeX..."
