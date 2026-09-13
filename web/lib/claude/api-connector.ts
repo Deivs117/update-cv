@@ -34,6 +34,7 @@ import {
 } from "@/lib/validation/profile.zod";
 import { jobAnalysisSchema, tailorRawResponseSchema } from "@/lib/validation/generation.zod";
 import { buildCandidateContent, resolveTailoredContent } from "@/lib/tailoring";
+import { extractJsonObject as extractJsonObjectShared } from "@/lib/claude/extract-json-object";
 
 const DEFAULT_MODEL = "claude-sonnet-5";
 const EXTRACTION_MAX_TOKENS = 16000;
@@ -82,25 +83,7 @@ function imageMimeType(filePath: string): string {
  * texto o un bloque de código markdown — esto lo tolera sin fallar.
  */
 function extractJsonObject(text: string): string {
-  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  const candidate = fenced ? fenced[1] : text;
-  const start = candidate.indexOf("{");
-  if (start === -1) {
-    throw new ClaudeConnectorError(
-      "La respuesta de Claude no contiene un objeto JSON reconocible.",
-    );
-  }
-  let depth = 0;
-  for (let i = start; i < candidate.length; i++) {
-    if (candidate[i] === "{") depth++;
-    if (candidate[i] === "}") depth--;
-    if (depth === 0) {
-      return candidate.slice(start, i + 1);
-    }
-  }
-  throw new ClaudeConnectorError(
-    "La respuesta de Claude tiene un objeto JSON sin cerrar (posiblemente truncado por max_tokens).",
-  );
+  return extractJsonObjectShared(text, { providerLabel: "Claude", truncationParam: "max_tokens" });
 }
 
 export class ApiConnector implements ClaudeConnector {

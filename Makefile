@@ -1,4 +1,4 @@
-.PHONY: help install dev build start lint typecheck check extract-profile test-latex agent-watch db-generate db-migrate db-push db-studio
+.PHONY: help install dev build start lint typecheck test check extract-profile test-latex agent-watch db-generate db-migrate db-push db-studio
 
 # Deteccion de SO
 ifeq ($(OS),Windows_NT)
@@ -25,7 +25,8 @@ help:
 	@echo "  make start           - Levantar la app ya compilada (next start)"
 	@echo "  make lint            - Revisar estilo de codigo con eslint"
 	@echo "  make typecheck       - Revisar tipos con tsc"
-	@echo "  make check           - lint + typecheck + build"
+	@echo "  make test            - Correr la suite de tests (Vitest)"
+	@echo "  make check           - lint + typecheck + test + build"
 	@echo "  make extract-profile - Extraer un borrador de perfil desde data/raw/ (PDF/imagenes)"
 	@echo "  make migrate-local-data EMAIL=... [DRY_RUN=1]"
 	@echo "                                              - Subir profile.json y apps/ a una cuenta hosteada (issue #12)"
@@ -72,8 +73,12 @@ typecheck:
 	@echo "Revisando tipos con tsc..."
 	cd $(WEB_DIR) && npm run typecheck
 
-check: lint typecheck build
-	@echo "lint + typecheck + build: todo en orden."
+test:
+	@echo "Corriendo la suite de tests (Vitest)..."
+	cd $(WEB_DIR) && npm test
+
+check: lint typecheck test build
+	@echo "lint + typecheck + test + build: todo en orden."
 
 # ============================================
 # MODO AGENTE Y HERRAMIENTAS DEL PERFIL

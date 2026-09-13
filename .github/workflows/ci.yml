@@ -1,7 +1,8 @@
 name: CI
 
 # Portero de calidad mínimo antes de mergear: valida que web/ compile y pase
-# lint/typecheck. No implementa deploy.
+# lint/typecheck/test (#65, unit tests con Vitest -- ver vitest.config.mts).
+# No implementa deploy.
 on:
   push:
     branches: [main, "feature/**"]
@@ -28,4 +29,5 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
+      - run: npm test
       - run: npm run build
