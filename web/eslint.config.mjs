@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Generado por `npm run test:coverage` (#77) -- ya gitignorado, pero
+    // .gitignore no excluye del lint por sí solo.
+    "coverage/**",
   ]),
 ]);
 

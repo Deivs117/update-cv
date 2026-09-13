@@ -1,0 +1,29 @@
+# Gate síncrono en el momento del PR (#72): revisa el diff de dependencias
+# npm que introduce ese PR específico contra la base de datos de advisories
+# de GitHub -- más preciso que un `npm audit` sobre todo el árbol, porque
+# solo mira lo que el PR realmente cambia. Complementa a Dependabot (#71):
+# este bloquea el merge en el momento, Dependabot abre PRs propios después.
+name: Dependency Review
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          # Default de la action es "low" -- demasiado ruidoso para un
+          # proyecto de un solo mantenedor (bloquearía por cualquier hallazgo
+          # menor). "moderate" es el umbral real a partir del cual vale la
+          # pena detener un merge (ver #73: la alerta de esbuild ya
+          # encontrada es "moderate", justo el piso que sí queremos bloquear).
+          fail-on-severity: moderate
+          # Solo comenta en el PR cuando de verdad encontró algo que bloquea
+          # -- no en cada PR "todo bien" (ruido innecesario).
+          comment-summary-in-pr: on-failure
