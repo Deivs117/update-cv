@@ -34,7 +34,19 @@ export default defineConfig({
       // por diseño): medir cobertura ahí daría un % artificialmente bajo
       // que no refleja lo que este ticket realmente cubre.
       include: ["lib/**/*.ts"],
-      exclude: ["lib/**/*.test.ts", "lib/db/schema.ts", "lib/validation/**"],
+      exclude: [
+        "lib/**/*.test.ts",
+        "lib/db/schema.ts",
+        "lib/validation/**",
+        // Adaptador delegador puro (cada método llama 1:1 a apps-io.ts/
+        // profile-io.ts, ya cubiertos indirectamente por sus propios tests)
+        // + puro contrato de tipos -- mismo criterio que lib/db/client.ts:
+        // wrappers triviales, no aportan cobertura real por el esfuerzo de
+        // testearlos (#13). resolveStorageMode/getStorageAdapter (lib/storage/
+        // get-storage-adapter.ts) SÍ tienen lógica real y están testeados.
+        "lib/storage/filesystem-storage-adapter.ts",
+        "lib/storage/storage-adapter.interface.ts",
+      ],
       // Piso real (#77, medido tras agregar tests a la parte barata/pura del
       // pipeline: tailoring, jobs, los builders de latex/), un poco por
       // debajo del actual para dejar margen -- no un número arbitrario. Lo
