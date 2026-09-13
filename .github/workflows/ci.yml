@@ -1,11 +1,21 @@
 name: CI
 
 # Portero de calidad mínimo antes de mergear: valida que web/ compile y pase
-# lint/typecheck. No implementa deploy.
+# lint/typecheck/test+coverage (#65/#77, Vitest -- ver vitest.config.mts).
+# No implementa deploy.
 on:
   push:
     branches: [main, "feature/**"]
   pull_request:
+
+# Principio de menor privilegio (#71, hardening de GitHub Actions): el
+# GITHUB_TOKEN de este workflow solo necesita leer el repo. La única
+# excepción es pull-requests: write (#77) -- exclusivamente para que
+# vitest-coverage-report-action pueda comentar el resumen de cobertura en
+# el PR, no se amplía a nada más.
+permissions:
+  contents: read
+  pull-requests: write
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -19,8 +29,13 @@ jobs:
       run:
         working-directory: web
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      # Actions pinneadas a SHA completo (#71): un tag mayor puede
+      # reapuntarse, un SHA no -- es la única forma de que la referencia sea
+      # un release inmutable (ver guía de hardening de GitHub Actions).
+      # Dependabot (.github/dependabot.yml) abre el PR para actualizar el SHA
+      # cuando salga una versión nueva.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
           cache: npm
@@ -28,4 +43,14 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
+      # test:coverage corre la misma suite que `npm test` -- solo agrega
+      # medición de cobertura + el piso mínimo de #77 (vitest.config.mts).
+      - run: npm run test:coverage
+      # if: always() -- el comentario debe aparecer incluso si el piso de
+      # cobertura falló, no solo cuando todo pasa (reportOnFailure: true en
+      # vitest.config.mts asegura que el reporte se genere en ese caso).
+      - if: always()
+        uses: davelosert/vitest-coverage-report-action@c4bbc33a89b7ace0e63d35f1f7d4bcee31155a73 # v2.13.0
+        with:
+          working-directory: web
       - run: npm run build

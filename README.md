@@ -246,8 +246,16 @@ npm run agent:watch
 ```
 
 Otros comandos disponibles vía `make` (ver `make help`): `make build`, `make start`,
-`make lint`, `make typecheck`, `make check` (lint + typecheck + build), `make extract-profile`,
-`make test-latex`.
+`make lint`, `make typecheck`, `make test` (suite de unit tests con Vitest, `#65`),
+`make check` (lint + typecheck + test + build), `make extract-profile`, `make test-latex`.
+
+`make test`/`npm test` (`web/`) es parte de las comprobaciones esperadas antes de mergear,
+mismo estatus que `make check` — corre en cada PR/push vía CI (`.github/workflows/ci.yml`).
+Cubre lógica pura (`get-connector.ts`, `extract-json-object.ts`, `escapeLatex` en
+`render.ts`) y funciones con I/O real contra Supabase (`checkAndIncrementUsage`) mockeando
+el cliente de la base — nunca contra un proyecto Supabase real, sin secrets en CI ni riesgo
+de tocar datos reales. La integración real con Postgres/RLS sigue verificada manualmente,
+como se hizo al construir `#7`/`#8`/`#10`.
 
 ### Configuración (`.env`)
 

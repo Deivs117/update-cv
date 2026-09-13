@@ -36,6 +36,7 @@ import {
 } from "@/lib/validation/profile.zod";
 import { jobAnalysisSchema, tailorRawResponseSchema } from "@/lib/validation/generation.zod";
 import { buildCandidateContent, resolveTailoredContent } from "@/lib/tailoring";
+import { extractJsonObject as extractJsonObjectShared } from "@/lib/claude/extract-json-object";
 
 // gemini-2.5-flash ya no está disponible para cuentas nuevas (verificado
 // contra una llamada real -- la API responde 404 recomendando este modelo).
@@ -108,25 +109,7 @@ function sleep(ms: number): Promise<void> {
  * la instrucción de salida estricta).
  */
 function extractJsonObject(text: string): string {
-  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  const candidate = fenced ? fenced[1] : text;
-  const start = candidate.indexOf("{");
-  if (start === -1) {
-    throw new ClaudeConnectorError(
-      "La respuesta de Gemini no contiene un objeto JSON reconocible.",
-    );
-  }
-  let depth = 0;
-  for (let i = start; i < candidate.length; i++) {
-    if (candidate[i] === "{") depth++;
-    if (candidate[i] === "}") depth--;
-    if (depth === 0) {
-      return candidate.slice(start, i + 1);
-    }
-  }
-  throw new ClaudeConnectorError(
-    "La respuesta de Gemini tiene un objeto JSON sin cerrar (posiblemente truncado por maxOutputTokens).",
-  );
+  return extractJsonObjectShared(text, { providerLabel: "Gemini", truncationParam: "maxOutputTokens" });
 }
 
 type GenAIPart =
