@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
-import { readFile } from "node:fs/promises";
-import path from "node:path";
-import { APPS_DIR, type ApplicationMetadata } from "@/lib/apps-io";
 import type { ClaudeMode } from "@/lib/claude/get-connector";
 import { generateApplication, mapGenerationError } from "@/lib/generation-pipeline";
 import { startJob } from "@/lib/jobs";
+import { getStorageAdapter } from "@/lib/storage/get-storage-adapter";
 
 /**
  * Regenera una aplicación existente (Fase 7): re-corre todo el pipeline
@@ -17,26 +15,15 @@ import { startJob } from "@/lib/jobs";
  */
 export async function POST(request: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  if (!slug || slug.includes("/") || slug.includes("..")) {
-    return NextResponse.json({ error: "Slug inválido." }, { status: 400 });
-  }
 
-  const dir = path.join(APPS_DIR, slug);
-  if (path.resolve(dir) !== path.join(path.resolve(APPS_DIR), slug)) {
-    return NextResponse.json({ error: "Slug inválido." }, { status: 400 });
-  }
-
-  let metadata: ApplicationMetadata;
-  let jobDescription: string;
-  try {
-    metadata = JSON.parse(await readFile(path.join(dir, "metadata.json"), "utf-8"));
-    jobDescription = await readFile(path.join(dir, "job_description.txt"), "utf-8");
-  } catch {
+  const record = await getStorageAdapter().getApplication(slug);
+  if (!record) {
     return NextResponse.json(
-      { error: `No se encontró la aplicación "${slug}" o le faltan archivos (metadata.json/job_description.txt).` },
+      { error: `No se encontró la aplicación "${slug}".` },
       { status: 404 },
     );
   }
+  const { metadata, jobDescription } = record;
 
   let claudeMode: ClaudeMode | undefined;
   try {
@@ -60,7 +47,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
           format: metadata.coverLetter === "text" ? "text" : "pdf",
         },
         claudeMode,
-        reuseDir: { dir, slug },
+        reuseSlug: slug,
         onProgress: setStage,
       }),
     mapGenerationError,

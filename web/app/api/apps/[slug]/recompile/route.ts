@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
-import { readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
-import { APPS_DIR, type ApplicationMetadata } from "@/lib/apps-io";
 import { compileLatex, LatexCompileError } from "@/lib/latex/compile";
 import { countPdfPages, PageCountError } from "@/lib/latex/page-count";
+import { getStorageAdapter } from "@/lib/storage/get-storage-adapter";
 
 /**
  * Editor de LaTeX avanzado (sección 8.2): recibe el .tex editado a mano y lo
@@ -12,11 +10,12 @@ import { countPdfPages, PageCountError } from "@/lib/latex/page-count";
  */
 export async function POST(request: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  if (!slug || slug.includes("/") || slug.includes("..")) {
-    return NextResponse.json({ error: "Slug inválido." }, { status: 400 });
-  }
-  const dir = path.join(APPS_DIR, slug);
-  if (path.resolve(dir) !== path.join(path.resolve(APPS_DIR), slug)) {
+  const adapter = getStorageAdapter();
+
+  let dir: string;
+  try {
+    dir = await adapter.getApplicationDir(slug);
+  } catch {
     return NextResponse.json({ error: "Slug inválido." }, { status: 400 });
   }
 
@@ -36,7 +35,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
   const texFileName = `${file}.tex`;
 
   try {
-    await writeFile(path.join(dir, texFileName), tex, "utf-8");
+    await adapter.saveApplication(slug, file === "cv" ? { cvTex: tex } : { coverLetterTex: tex });
     const { pdfPath } = await compileLatex(texFileName, dir);
     const pages = await countPdfPages(pdfPath);
 
@@ -44,12 +43,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
     // recomendación de páginas asociada).
     if (file === "cv") {
       try {
-        const metadataPath = path.join(dir, "metadata.json");
-        const metadata = JSON.parse(await readFile(metadataPath, "utf-8")) as ApplicationMetadata;
-        metadata.pages = pages;
-        await writeFile(metadataPath, JSON.stringify(metadata, null, 2) + "\n", "utf-8");
+        await adapter.saveApplication(slug, { metadata: { pages } });
       } catch {
-        // metadata.json ausente/corrupto: no bloquea la recompilación, solo no se actualiza el conteo.
+        // metadata ausente/corrupta: no bloquea la recompilación, solo no se actualiza el conteo.
       }
     }
 
