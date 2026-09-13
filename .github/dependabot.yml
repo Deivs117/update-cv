@@ -1,0 +1,25 @@
+# Mantiene al día lo que #71 empezó a fijar a mano: los SHA pinneados de
+# GitHub Actions (ecosystem "github-actions") y las dependencias npm de
+# web/ -- este segundo ecosystem es justo lo que hubiera avisado antes de
+# que eslint@9 quedara deprecado sin que nadie se diera cuenta (#65/#70).
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore(repo)"
+
+  - package-ecosystem: "npm"
+    directory: "/web"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore(repo)"
+    # Agrupado para no abrir un PR por cada paquete individual -- el gate de
+    # CI (lint/typecheck/test/build) sigue validando cada PR agrupado igual.
+    groups:
+      npm-dependencies:
+        patterns:
+          - "*"
