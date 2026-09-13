@@ -97,6 +97,16 @@ export const applications = pgTable(
     jobDescription: text("job_description").notNull(),
     /** Salida de tailorCV -- misma forma que TailoredContent (connector.interface.ts). */
     tailoredContent: jsonb("tailored_content"),
+    /**
+     * .tex editable a mano (editor LaTeX avanzado, sección 8.2) -- decisión
+     * de diseño #13: columna de texto, no un archivo aparte en Storage.
+     * Mismo criterio que `tailoredContent`: contenido que siempre se
+     * carga/escribe completo, texto de pocos KB reescrito en cada
+     * recompilación (ver comparación de seguridad/escalabilidad/eficiencia
+     * en el comentario del issue).
+     */
+    cvTex: text("cv_tex"),
+    coverLetterTex: text("cover_letter_tex"),
     /** Rutas dentro del bucket privado de Storage (#10), no URLs firmadas. */
     cvPdfPath: text("cv_pdf_path"),
     coverLetterPdfPath: text("cover_letter_pdf_path"),

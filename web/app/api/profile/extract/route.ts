@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { getConnector, type ClaudeMode } from "@/lib/claude/get-connector";
 import { ClaudeConnectorError } from "@/lib/claude/connector.interface";
-import { findSeedFiles, ProfileIOError, writeDraft } from "@/lib/profile-io";
+import { ProfileIOError } from "@/lib/profile-io";
+import { getStorageAdapter } from "@/lib/storage/get-storage-adapter";
 
 /**
  * Dispara el Módulo 1 (extracción) sobre lo que haya en data/raw/ y guarda el
@@ -20,10 +21,11 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { pdfPath, imagePaths } = await findSeedFiles();
+    const adapter = getStorageAdapter();
+    const { pdfPath, imagePaths } = await adapter.findProfileSeedFiles();
     const connector = getConnector(mode);
     const draft = await connector.extractProfile({ pdfPath, imagePaths });
-    await writeDraft(draft);
+    await adapter.saveProfileDraft(draft);
     return NextResponse.json({ draft });
   } catch (err) {
     if (err instanceof ClaudeConnectorError || err instanceof ProfileIOError) {
