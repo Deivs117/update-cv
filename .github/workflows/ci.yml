@@ -1,7 +1,7 @@
 name: CI
 
 # Portero de calidad mínimo antes de mergear: valida que web/ compile y pase
-# lint/typecheck/test (#65, unit tests con Vitest -- ver vitest.config.mts).
+# lint/typecheck/test+coverage (#65/#77, Vitest -- ver vitest.config.mts).
 # No implementa deploy.
 on:
   push:
@@ -9,10 +9,13 @@ on:
   pull_request:
 
 # Principio de menor privilegio (#71, hardening de GitHub Actions): el
-# GITHUB_TOKEN de este workflow solo necesita leer el repo, nunca escribir --
-# explícito acá para no depender del default a nivel de repo/org.
+# GITHUB_TOKEN de este workflow solo necesita leer el repo. La única
+# excepción es pull-requests: write (#77) -- exclusivamente para que
+# vitest-coverage-report-action pueda comentar el resumen de cobertura en
+# el PR, no se amplía a nada más.
 permissions:
   contents: read
+  pull-requests: write
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -40,5 +43,14 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
-      - run: npm test
+      # test:coverage corre la misma suite que `npm test` -- solo agrega
+      # medición de cobertura + el piso mínimo de #77 (vitest.config.mts).
+      - run: npm run test:coverage
+      # if: always() -- el comentario debe aparecer incluso si el piso de
+      # cobertura falló, no solo cuando todo pasa (reportOnFailure: true en
+      # vitest.config.mts asegura que el reporte se genere en ese caso).
+      - if: always()
+        uses: davelosert/vitest-coverage-report-action@c4bbc33a89b7ace0e63d35f1f7d4bcee31155a73 # v2.13.0
+        with:
+          working-directory: web
       - run: npm run build
