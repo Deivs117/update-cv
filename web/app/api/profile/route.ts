@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
-import { ProfileIOError, readProfile, writeProfile } from "@/lib/profile-io";
+import { ProfileIOError } from "@/lib/profile-io";
+import { getStorageAdapter } from "@/lib/storage/get-storage-adapter";
 import { profileInputSchema } from "@/lib/validation/profile.zod";
 
 export async function GET() {
   try {
-    const profile = await readProfile();
+    const profile = await getStorageAdapter().getProfile();
     return NextResponse.json({ profile });
   } catch (err) {
     const message =
@@ -36,7 +37,7 @@ export async function PUT(request: Request) {
   }
 
   try {
-    const saved = await writeProfile(parsed.data);
+    const saved = await getStorageAdapter().saveProfile(parsed.data);
     return NextResponse.json({ profile: saved });
   } catch (err) {
     const message =

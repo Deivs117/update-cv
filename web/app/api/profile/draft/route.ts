@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
-import { ProfileIOError, readDraft } from "@/lib/profile-io";
+import { ProfileIOError } from "@/lib/profile-io";
+import { getStorageAdapter } from "@/lib/storage/get-storage-adapter";
 
 /** Devuelve el último borrador de extracción, si existe (para retomar tras recargar la página). */
 export async function GET() {
   try {
-    const draft = await readDraft();
+    const draft = await getStorageAdapter().getProfileDraft();
     return NextResponse.json({ draft });
   } catch (err) {
     const message =

@@ -5,11 +5,10 @@
  * una aplicación existente reusando su misma carpeta).
  */
 import path from "node:path";
-import { writeFile } from "node:fs/promises";
 import { getConnector, resolveClaudeMode, type ClaudeMode } from "@/lib/claude/get-connector";
 import { ClaudeConnectorError, type JobAnalysis, type Language } from "@/lib/claude/connector.interface";
 import { hasMinimumViableContent } from "@/lib/validation/profile.zod";
-import { readProfile, REPO_ROOT, ProfileIOError } from "@/lib/profile-io";
+import { REPO_ROOT, ProfileIOError } from "@/lib/profile-io";
 import { getPageRecommendation } from "@/lib/experience-years";
 import { buildFinalCVData } from "@/lib/latex/build-final-cvdata";
 import { renderCV } from "@/lib/latex/render";
@@ -17,7 +16,8 @@ import { renderVisualCV, prepareVisualAssets } from "@/lib/latex/render-visual";
 import { renderCoverLetter } from "@/lib/latex/render-cover-letter";
 import { compileLatex, LatexCompileError } from "@/lib/latex/compile";
 import { countPdfPages, PageCountError } from "@/lib/latex/page-count";
-import { createApplicationDir, writeApplicationOutputs, type ApplicationMetadata } from "@/lib/apps-io";
+import { getStorageAdapter } from "@/lib/storage/get-storage-adapter";
+import type { ApplicationMetadata } from "@/lib/storage/storage-adapter.interface";
 
 export type TemplateVariant = "ats" | "visual";
 export type CoverLetterFormat = "pdf" | "text";
@@ -36,8 +36,8 @@ export interface GenerateApplicationInput {
   jobAnalysis?: JobAnalysis;
   coverLetter: CoverLetterOptions;
   claudeMode?: ClaudeMode;
-  /** Fase 7: al regenerar, reusa la carpeta existente en vez de crear una con la fecha de hoy. */
-  reuseDir?: { dir: string; slug: string };
+  /** Fase 7: al regenerar, reusa la aplicación existente en vez de crear una nueva con la fecha de hoy. */
+  reuseSlug?: string;
   /** Reporta el paso actual (para UI no bloqueante -- ver web/lib/jobs.ts). */
   onProgress?: (stage: string) => void;
 }
@@ -67,7 +67,8 @@ export class ApplicationGenerationError extends Error {
 export async function generateApplication(
   input: GenerateApplicationInput,
 ): Promise<GenerateApplicationResult> {
-  const profile = await readProfile();
+  const adapter = getStorageAdapter();
+  const profile = await adapter.getProfile();
   if (!profile) {
     throw new ApplicationGenerationError(
       "No existe data/profile.json todavía. Completa tu perfil en /perfil antes de generar un CV.",
@@ -103,8 +104,10 @@ export async function generateApplication(
 
   onProgress("Generando el documento LaTeX...");
   const cvData = buildFinalCVData(profile, input.language, tailored);
-  const { dir, slug } =
-    input.reuseDir ?? (await createApplicationDir(input.company, input.role));
+  const { slug } = input.reuseSlug
+    ? { slug: input.reuseSlug }
+    : await adapter.createApplication(input.company, input.role);
+  const dir = await adapter.getApplicationDir(slug);
 
   let tex: string;
   if (input.templateVariant === "ats") {
@@ -121,7 +124,7 @@ export async function generateApplication(
     tex = await renderVisualCV(cvData, { photoFileName });
   }
 
-  await writeFile(path.join(dir, "cv.tex"), tex, "utf-8");
+  await adapter.saveApplication(slug, { cvTex: tex });
   onProgress("Compilando el PDF del CV...");
   const { pdfPath } = await compileLatex("cv.tex", dir);
   const pages = await countPdfPages(pdfPath);
@@ -142,7 +145,7 @@ export async function generateApplication(
     });
 
     if (input.coverLetter.format === "text") {
-      await writeFile(path.join(dir, "cover_letter.txt"), letterBody, "utf-8");
+      await adapter.saveApplication(slug, { coverLetterText: letterBody });
       coverLetterText = letterBody;
     } else {
       const letterTex = await renderCoverLetter({
@@ -151,7 +154,7 @@ export async function generateApplication(
         company: input.company,
         bodyText: letterBody,
       });
-      await writeFile(path.join(dir, "cover_letter.tex"), letterTex, "utf-8");
+      await adapter.saveApplication(slug, { coverLetterTex: letterTex });
       onProgress("Compilando el PDF de la carta de presentación...");
       await compileLatex("cover_letter.tex", dir);
       coverLetterUrl = `/api/apps/${slug}/cover_letter.pdf`;
@@ -172,7 +175,7 @@ export async function generateApplication(
     createdAt: new Date().toISOString(),
     coverLetter: input.coverLetter.enabled ? input.coverLetter.format : "none",
   };
-  await writeApplicationOutputs(dir, { jobDescription: input.jobDescription, metadata });
+  await adapter.saveApplication(slug, { jobDescription: input.jobDescription, metadata });
 
   return {
     slug,
