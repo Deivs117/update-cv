@@ -5,6 +5,11 @@
 # exista el manejo de secretos de Vercel -- ver CLAUDE.md "Gestión de secretos".
 .secrets.local.md
 
+# Log local de "handoff" entre sesiones de trabajo (contexto, decisiones,
+# próximos pasos) -- nunca se versiona, es memoria de trabajo, no documentación
+# del proyecto.
+handoff.md
+
 # Skills de Claude Code: locales por defecto (herramientas de quien desarrolla, no
 # documentación del proyecto) — excepto modo-agente/, que sí es funcionalidad del
 # producto y tiene que viajar con el repo (ver CLAUDE.md).
