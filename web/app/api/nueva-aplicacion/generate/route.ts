@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireSession } from "@/lib/auth/require-session";
 import type { ClaudeMode } from "@/lib/claude/get-connector";
 import type { JobAnalysis, Language } from "@/lib/claude/connector.interface";
 import {
@@ -62,6 +63,9 @@ function parseBody(body: unknown): GenerateRequestBody | null {
  * modo Agente.
  */
 export async function POST(request: Request) {
+  const session = await requireSession();
+  if (!session.ok) return session.response;
+
   let rawBody: unknown;
   try {
     rawBody = await request.json();
@@ -87,7 +91,7 @@ export async function POST(request: Request) {
   }
 
   const jobId = startJob(
-    (setStage) => generateApplication({ ...body, onProgress: setStage }),
+    (setStage) => generateApplication({ ...body, userId: session.userId, onProgress: setStage }),
     mapGenerationError,
   );
 

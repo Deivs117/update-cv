@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireSession } from "@/lib/auth/require-session";
 import { getStorageAdapter } from "@/lib/storage/get-storage-adapter";
 import type { ApplicationRecord } from "@/lib/storage/storage-adapter.interface";
 
@@ -37,8 +38,11 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ slug: string; file: string }> },
 ) {
+  const session = await requireSession();
+  if (!session.ok) return session.response;
+
   const { slug, file } = await params;
-  const adapter = getStorageAdapter();
+  const adapter = getStorageAdapter(session.userId);
 
   if (PDF_FILES.has(file)) {
     const pdfFile = file === "cover_letter.pdf" ? "cover_letter" : "cv";

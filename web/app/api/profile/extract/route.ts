@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireSession } from "@/lib/auth/require-session";
 import { getConnector, type ClaudeMode } from "@/lib/claude/get-connector";
 import { ClaudeConnectorError } from "@/lib/claude/connector.interface";
 import { ProfileIOError } from "@/lib/profile-io";
@@ -12,6 +13,9 @@ import { getStorageAdapter } from "@/lib/storage/get-storage-adapter";
  * (sección 8.2); si se omite, usa el default de CLAUDE_MODE en .env.
  */
 export async function POST(request: Request) {
+  const session = await requireSession();
+  if (!session.ok) return session.response;
+
   let mode: ClaudeMode | undefined;
   try {
     const body = await request.json();
@@ -21,7 +25,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const adapter = getStorageAdapter();
+    const adapter = getStorageAdapter(session.userId);
     const { pdfPath, imagePaths } = await adapter.findProfileSeedFiles();
     const connector = getConnector(mode);
     const draft = await connector.extractProfile({ pdfPath, imagePaths });

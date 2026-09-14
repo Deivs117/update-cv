@@ -24,8 +24,8 @@ let cachedAdapter: StorageAdapter | undefined;
 
 /**
  * `userId` es opcional a propósito (#14): así ningún call-site existente en
- * modo local se rompe, y las rutas de `app/api/*` (#17, en paralelo) pueden
- * empezar a pasarlo sin esperar a que todas lo hagan a la vez.
+ * modo local se rompe, y las rutas de `app/api/*` (#17) pueden pasarlo sin
+ * que las dos cosas tuvieran que terminarse al mismo tiempo.
  *
  * - Modo local: `userId` se ignora, comportamiento intacto -- sigue
  *   cacheando un singleton `FilesystemStorageAdapter` (no hay datos por
