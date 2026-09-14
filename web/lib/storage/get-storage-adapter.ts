@@ -1,11 +1,12 @@
 /**
- * Fábrica del adaptador de almacenamiento activo (#13), análoga a
+ * Fábrica del adaptador de almacenamiento activo (#13/#14), análoga a
  * `getConnector`/`resolveClaudeMode` (lib/claude/get-connector.ts):
  * `STORAGE_MODE` en .env decide qué implementación de `StorageAdapter` usa
  * el resto del sistema -- ninguna ruta de API debe elegir esto por su cuenta
  * ni importar `fs`/rutas de archivo directo.
  */
 import { FilesystemStorageAdapter } from "@/lib/storage/filesystem-storage-adapter";
+import { SupabaseStorageAdapter } from "@/lib/storage/supabase-storage-adapter";
 import { StorageAdapterError, type StorageAdapter } from "@/lib/storage/storage-adapter.interface";
 
 export type StorageMode = "local" | "hosted";
@@ -22,30 +23,32 @@ export function resolveStorageMode(): StorageMode {
 let cachedAdapter: StorageAdapter | undefined;
 
 /**
- * `SupabaseStorageAdapter` (#14) todavía no existe -- este selector ya deja
- * el punto de entrada listo para cuando se implemente, sin bloquear el modo
- * local mientras tanto.
+ * `userId` es opcional a propósito (#14): así ningún call-site existente en
+ * modo local se rompe, y las rutas de `app/api/*` (#17) pueden pasarlo sin
+ * que las dos cosas tuvieran que terminarse al mismo tiempo.
  *
- * STUB (#17): el parámetro `userId` lo agrega acá el ticket #17 (autenticación
- * de sesión en las rutas de API) SOLO para que las 10 rutas de app/api/*
- * tipen bien contra `getStorageAdapter(session.userId)` ya mismo -- la
- * implementación real (construir `SupabaseStorageAdapter` scoped a ese
- * usuario en modo hosteado) es responsabilidad de #14 y todavía no está
- * hecha acá a propósito. Si este comentario sigue presente, #14 no se
- * fusionó todavía sobre esta rama.
+ * - Modo local: `userId` se ignora, comportamiento intacto -- sigue
+ *   cacheando un singleton `FilesystemStorageAdapter` (no hay datos por
+ *   usuario que aislar, es el filesystem local de una sola instalación).
+ * - Modo hosteado: instancia NUEVA de `SupabaseStorageAdapter` en cada
+ *   llamada, nunca cacheada -- los datos son por usuario, cachear una
+ *   instancia (y por lo tanto un `userId`) sería un bug de seguridad real.
+ *   Sin `userId`, lanza en vez de construir un adaptador sin dueño.
  */
 export function getStorageAdapter(userId?: string): StorageAdapter {
-  if (cachedAdapter) return cachedAdapter;
-
   const mode = resolveStorageMode();
+
   if (mode === "hosted") {
-    void userId; // ver STUB arriba -- #14 lo va a usar acá para construir el adapter.
-    throw new StorageAdapterError(
-      "STORAGE_MODE=hosted todavía no tiene adaptador implementado (issue #14, StorageAdapter contra Supabase). " +
-        "Usa STORAGE_MODE=local (o déjalo sin configurar) mientras tanto.",
-    );
+    if (!userId) {
+      throw new StorageAdapterError(
+        "Falta userId en modo hosteado (STORAGE_MODE=hosted): getStorageAdapter(userId) requiere " +
+          "un usuario autenticado, nunca se construye un SupabaseStorageAdapter sin dueño.",
+      );
+    }
+    return new SupabaseStorageAdapter(userId);
   }
 
+  if (cachedAdapter) return cachedAdapter;
   cachedAdapter = new FilesystemStorageAdapter();
   return cachedAdapter;
 }
