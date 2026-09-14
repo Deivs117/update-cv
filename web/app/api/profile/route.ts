@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
+import { requireSession } from "@/lib/auth/require-session";
 import { ProfileIOError } from "@/lib/profile-io";
 import { getStorageAdapter } from "@/lib/storage/get-storage-adapter";
 import { profileInputSchema } from "@/lib/validation/profile.zod";
 
 export async function GET() {
+  const session = await requireSession();
+  if (!session.ok) return session.response;
+
   try {
-    const profile = await getStorageAdapter().getProfile();
+    const profile = await getStorageAdapter(session.userId).getProfile();
     return NextResponse.json({ profile });
   } catch (err) {
     const message =
@@ -15,6 +19,9 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
+  const session = await requireSession();
+  if (!session.ok) return session.response;
+
   let body: unknown;
   try {
     body = await request.json();
@@ -37,7 +44,7 @@ export async function PUT(request: Request) {
   }
 
   try {
-    const saved = await getStorageAdapter().saveProfile(parsed.data);
+    const saved = await getStorageAdapter(session.userId).saveProfile(parsed.data);
     return NextResponse.json({ profile: saved });
   } catch (err) {
     const message =

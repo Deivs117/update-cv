@@ -25,12 +25,21 @@ let cachedAdapter: StorageAdapter | undefined;
  * `SupabaseStorageAdapter` (#14) todavía no existe -- este selector ya deja
  * el punto de entrada listo para cuando se implemente, sin bloquear el modo
  * local mientras tanto.
+ *
+ * STUB (#17): el parámetro `userId` lo agrega acá el ticket #17 (autenticación
+ * de sesión en las rutas de API) SOLO para que las 10 rutas de app/api/*
+ * tipen bien contra `getStorageAdapter(session.userId)` ya mismo -- la
+ * implementación real (construir `SupabaseStorageAdapter` scoped a ese
+ * usuario en modo hosteado) es responsabilidad de #14 y todavía no está
+ * hecha acá a propósito. Si este comentario sigue presente, #14 no se
+ * fusionó todavía sobre esta rama.
  */
-export function getStorageAdapter(): StorageAdapter {
+export function getStorageAdapter(userId?: string): StorageAdapter {
   if (cachedAdapter) return cachedAdapter;
 
   const mode = resolveStorageMode();
   if (mode === "hosted") {
+    void userId; // ver STUB arriba -- #14 lo va a usar acá para construir el adapter.
     throw new StorageAdapterError(
       "STORAGE_MODE=hosted todavía no tiene adaptador implementado (issue #14, StorageAdapter contra Supabase). " +
         "Usa STORAGE_MODE=local (o déjalo sin configurar) mientras tanto.",

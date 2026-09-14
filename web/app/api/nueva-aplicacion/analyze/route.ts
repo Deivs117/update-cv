@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireSession } from "@/lib/auth/require-session";
 import { getConnector, resolveClaudeMode, type ClaudeMode } from "@/lib/claude/get-connector";
 import { ClaudeConnectorError } from "@/lib/claude/connector.interface";
 import { startJob } from "@/lib/jobs";
@@ -9,6 +10,9 @@ import { startJob } from "@/lib/jobs";
  * con { jobId } y el cliente hace polling a GET /api/jobs/[jobId].
  */
 export async function POST(request: Request) {
+  const session = await requireSession();
+  if (!session.ok) return session.response;
+
   let body: unknown;
   try {
     body = await request.json();
