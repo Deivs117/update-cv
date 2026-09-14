@@ -107,9 +107,26 @@ export const applications = pgTable(
      */
     cvTex: text("cv_tex"),
     coverLetterTex: text("cover_letter_tex"),
+    /**
+     * Cuerpo de la carta de presentación en texto plano (coverLetter="text",
+     * sin PDF) -- issue #14, mismo criterio que `cvTex`/`coverLetterTex`:
+     * contenido de pocos KB que siempre se carga/escribe completo.
+     */
+    coverLetterText: text("cover_letter_text"),
     /** Rutas dentro del bucket privado de Storage (#10), no URLs firmadas. */
     cvPdfPath: text("cv_pdf_path"),
     coverLetterPdfPath: text("cover_letter_pdf_path"),
+    /**
+     * Resto de `ApplicationMetadata` (storage-adapter.interface.ts) sin
+     * columna propia -- issue #14: `claudeMode`, `claudeModel`,
+     * `templateVariant`, `pages`, `recommendedMaxPages`, `forcedTrim`,
+     * `coverLetter` (el tipo "none"|"pdf"|"text", no el contenido). Mismo
+     * criterio híbrido del comentario de arriba: nada acá se filtra/ordena
+     * hoy, así que no ganan columna propia. `company`/`role`/`language`/
+     * `createdAt` sí son columnas reales (se usaban ya para RLS/orden antes
+     * de este ticket) y `saveApplication` los escribe ahí, no acá.
+     */
+    metadata: jsonb("metadata"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
