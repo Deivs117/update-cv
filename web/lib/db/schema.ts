@@ -182,6 +182,14 @@ export const jobs = pgTable(
     stage: text("stage"),
     status: text("status").notNull().default("pending"),
     errorMessage: text("error_message"),
+    /**
+     * Resultado final del job (#15) -- misma forma que devolvía `job.result`
+     * en la cola en memoria (web/lib/jobs.ts): JobAnalysis para un job de
+     * análisis, GenerateApplicationResult para uno de generación/
+     * regeneración. `GET /api/jobs/[jobId]` lo lee de acá en modo hosteado
+     * en vez de la memoria del proceso.
+     */
+    result: jsonb("result"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

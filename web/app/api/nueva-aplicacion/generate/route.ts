@@ -9,6 +9,8 @@ import {
   type TemplateVariant,
 } from "@/lib/generation-pipeline";
 import { startJob } from "@/lib/jobs";
+import { enqueueHostedJob } from "@/lib/jobs/hosted-jobs";
+import { resolveStorageMode } from "@/lib/storage/get-storage-adapter";
 
 interface GenerateRequestBody {
   jobDescription: string;
@@ -90,10 +92,16 @@ export async function POST(request: Request) {
     );
   }
 
-  const jobId = startJob(
-    (setStage) => generateApplication({ ...body, userId: session.userId, onProgress: setStage }),
-    mapGenerationError,
-  );
+  // En modo hosteado, un Vercel Function no sobrevive después de responder
+  // -- el trabajo se publica a QStash (#15) en vez de correr en un closure
+  // "fire and forget" como en modo local (ver web/lib/jobs.ts).
+  const jobId =
+    resolveStorageMode() === "hosted"
+      ? await enqueueHostedJob("/api/internal/jobs/generate", { ...body }, session.userId!)
+      : startJob(
+          (setStage) => generateApplication({ ...body, userId: session.userId, onProgress: setStage }),
+          mapGenerationError,
+        );
 
   return NextResponse.json({ jobId }, { status: 202 });
 }
