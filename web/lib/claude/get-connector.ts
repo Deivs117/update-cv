@@ -26,8 +26,29 @@ function getAllowedModes(): Set<ClaudeMode> {
   return new Set(["api", "agent"]); // "both" o sin configurar
 }
 
+/**
+ * El modo Agente (buzón `.claude-tasks/`, Claude Code procesando tareas) solo
+ * tiene sentido contra un filesystem local -- en una instalación hosteada
+ * (STORAGE_MODE=hosted, ver resolveStorageMode() en
+ * lib/storage/get-storage-adapter.ts) nunca debe quedar disponible ni
+ * configurable por un usuario final, sin importar CLAUDE_MODE ni un
+ * requestedMode explícito (issue #16).
+ */
+function isHostedStorage(): boolean {
+  return process.env.STORAGE_MODE?.trim().toLowerCase() === "hosted";
+}
+
 /** Resuelve qué modo se va a usar realmente, validando contra CLAUDE_MODE. */
 export function resolveClaudeMode(requestedMode?: ClaudeMode): ClaudeMode {
+  if (isHostedStorage()) {
+    if (requestedMode === "agent") {
+      throw new ClaudeConnectorError(
+        "El modo Agente no está disponible en instalaciones hosteadas -- usa MODEL_PROVIDER en su lugar.",
+      );
+    }
+    return "api";
+  }
+
   const allowed = getAllowedModes();
   const mode = requestedMode ?? (allowed.has("api") ? "api" : "agent");
 

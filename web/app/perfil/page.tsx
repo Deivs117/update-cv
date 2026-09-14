@@ -11,6 +11,10 @@ import {
 
 type Banner = { kind: "info" | "success" | "error"; text: string } | null;
 
+// Ver misma constante y justificación en app/nueva-aplicacion/page.tsx
+// (issue #16): el modo Agente se oculta en instalaciones hosteadas.
+const IS_HOSTED = process.env.NEXT_PUBLIC_STORAGE_MODE === "hosted";
+
 export default function PerfilPage() {
   const [profile, setProfile] = useState<EditableProfile>(emptyProfile());
   const [loading, setLoading] = useState(true);
@@ -147,15 +151,17 @@ export default function PerfilPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <select
-            value={claudeMode}
-            onChange={(e) => setClaudeMode(e.target.value as "api" | "agent")}
-            className="rounded-md border border-zinc-300 bg-white px-2 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
-            title="Modo Claude para la extracción"
-          >
-            <option value="api">Modo API</option>
-            <option value="agent">Modo Agente</option>
-          </select>
+          {!IS_HOSTED && (
+            <select
+              value={claudeMode}
+              onChange={(e) => setClaudeMode(e.target.value as "api" | "agent")}
+              className="rounded-md border border-zinc-300 bg-white px-2 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+              title="Modo Claude para la extracción"
+            >
+              <option value="api">Modo API</option>
+              <option value="agent">Modo Agente</option>
+            </select>
+          )}
           <button
             type="button"
             onClick={handleImport}

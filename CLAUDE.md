@@ -187,3 +187,8 @@ existen sería más confuso que útil.
 Contrato completo en la skill `.claude/skills/modo-agente/SKILL.md` — se carga solo cuando
 el usuario pide explícitamente procesar tareas pendientes del buzón `.claude-tasks/`, no en
 cada sesión.
+
+Es una funcionalidad **exclusiva de instalaciones locales** (`STORAGE_MODE=local`): en
+`STORAGE_MODE=hosted`, `resolveClaudeMode` (`web/lib/claude/get-connector.ts`) fuerza modo
+API sin excepción y la UI oculta el selector — nunca queda disponible ni configurable en la
+versión hosteada (issue #16).
