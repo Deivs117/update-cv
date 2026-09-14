@@ -131,6 +131,15 @@ interface ClaudeConnector {
   pedirlo a mano cada vez.
 - **`web/lib/claude/get-connector.ts`**: elige el conector activo según `CLAUDE_MODE` en
   `.env`, con posibilidad de override puntual desde la UI.
+- **El modo Agente es exclusivo de instalaciones locales** (issue #16): solo tiene sentido
+  contra un filesystem local (el buzón `.claude-tasks/` y `data/`/`apps/` que Claude Code lee
+  y escribe). Cuando `STORAGE_MODE=hosted`, `resolveClaudeMode` en `get-connector.ts` fuerza
+  siempre `"api"` — ignora `CLAUDE_MODE` y rechaza con `ClaudeConnectorError` cualquier
+  `requestedMode="agent"` explícito, así que `AgentConnector` nunca puede instanciarse en una
+  instancia hosteada. La UI (`/nueva-aplicacion`, `/perfil`) oculta el selector de modo Claude
+  en ese caso leyendo `NEXT_PUBLIC_STORAGE_MODE` (espejo público de `STORAGE_MODE`, ver
+  `.env.example`) — no hay forma de que un usuario final de la versión hosteada llegue a pedir
+  modo Agente ni desde la UI ni desde la API.
 - **Proveedor de modelo dentro del modo API** (`MODEL_PROVIDER`): `anthropic` (Anthropic,
   requiere créditos), `google` (Gemini/AI Studio — **recomendado**, free tier real sin
   tarjeta de crédito ni expiración, cubre `extractProfile` con el mismo proveedor que el
