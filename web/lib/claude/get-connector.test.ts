@@ -20,6 +20,7 @@ beforeEach(() => {
   delete process.env.ANTHROPIC_API_KEY;
   delete process.env.GOOGLE_API_KEY;
   delete process.env.NVIDIA_NIM_API_KEY;
+  delete process.env.STORAGE_MODE;
 });
 
 afterEach(() => {
@@ -55,6 +56,29 @@ describe("resolveClaudeMode", () => {
   it("respeta un requestedMode explícito cuando está permitido", () => {
     process.env.CLAUDE_MODE = "both";
     expect(resolveClaudeMode("api")).toBe("api");
+  });
+
+  it("STORAGE_MODE=hosted fuerza 'api' aunque CLAUDE_MODE=agent", () => {
+    process.env.STORAGE_MODE = "hosted";
+    process.env.CLAUDE_MODE = "agent";
+    expect(resolveClaudeMode()).toBe("api");
+  });
+
+  it("STORAGE_MODE=hosted rechaza un requestedMode='agent' explícito", () => {
+    process.env.STORAGE_MODE = "hosted";
+    expect(() => resolveClaudeMode("agent")).toThrow(ClaudeConnectorError);
+    expect(() => resolveClaudeMode("agent")).toThrow(/instalaciones hosteadas/);
+  });
+
+  it("STORAGE_MODE=hosted con requestedMode='api' explícito sigue devolviendo 'api'", () => {
+    process.env.STORAGE_MODE = "hosted";
+    expect(resolveClaudeMode("api")).toBe("api");
+  });
+
+  it("STORAGE_MODE=local (o sin configurar) no altera el comportamiento existente", () => {
+    process.env.STORAGE_MODE = "local";
+    process.env.CLAUDE_MODE = "agent";
+    expect(resolveClaudeMode()).toBe("agent");
   });
 });
 
@@ -116,5 +140,12 @@ describe("getConnector", () => {
     process.env.CLAUDE_MODE = "both";
     process.env.ANTHROPIC_API_KEY = "sk-test-dummy";
     expect(getConnector("api")).toBeInstanceOf(ApiConnector);
+  });
+
+  it("STORAGE_MODE=hosted nunca instancia un AgentConnector, aunque CLAUDE_MODE=agent", () => {
+    process.env.STORAGE_MODE = "hosted";
+    process.env.CLAUDE_MODE = "agent";
+    process.env.ANTHROPIC_API_KEY = "sk-test-dummy";
+    expect(getConnector()).toBeInstanceOf(ApiConnector);
   });
 });

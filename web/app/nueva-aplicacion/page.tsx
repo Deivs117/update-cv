@@ -6,6 +6,13 @@ import { pollJob } from "@/lib/client/poll-job";
 
 type Step = "vacante" | "opciones" | "resultado";
 
+// El modo Agente (buzón .claude-tasks/, Claude Code procesando tareas) solo
+// tiene sentido contra un filesystem local -- en una instalación hosteada
+// (STORAGE_MODE=hosted) no debe quedar disponible ni configurable desde acá
+// (issue #16). STORAGE_MODE es server-side; NEXT_PUBLIC_STORAGE_MODE es su
+// espejo inyectado en el bundle del cliente (ver .env.example).
+const IS_HOSTED = process.env.NEXT_PUBLIC_STORAGE_MODE === "hosted";
+
 interface GenerateResult {
   slug: string;
   pages: number;
@@ -141,19 +148,21 @@ export default function NuevaAplicacionPage() {
             </label>
           </div>
 
-          <fieldset className="flex flex-col gap-1 text-sm">
-            <legend className="font-medium">Modo Claude</legend>
-            <label className="flex items-center gap-2">
-              <input type="radio" checked={claudeMode === "api"} onChange={() => setClaudeMode("api")} />
-              API (automático, requiere ANTHROPIC_API_KEY)
-            </label>
-            <label className="flex items-center gap-2">
-              <input type="radio" checked={claudeMode === "agent"} onChange={() => setClaudeMode("agent")} />
-              Agente (sin API key -- corre <code>npm run agent:watch</code> en
-              una terminal aparte y se procesa solo; si no, pídele a Claude
-              Code que procese las tareas pendientes)
-            </label>
-          </fieldset>
+          {!IS_HOSTED && (
+            <fieldset className="flex flex-col gap-1 text-sm">
+              <legend className="font-medium">Modo Claude</legend>
+              <label className="flex items-center gap-2">
+                <input type="radio" checked={claudeMode === "api"} onChange={() => setClaudeMode("api")} />
+                API (automático, requiere ANTHROPIC_API_KEY)
+              </label>
+              <label className="flex items-center gap-2">
+                <input type="radio" checked={claudeMode === "agent"} onChange={() => setClaudeMode("agent")} />
+                Agente (sin API key -- corre <code>npm run agent:watch</code> en
+                una terminal aparte y se procesa solo; si no, pídele a Claude
+                Code que procese las tareas pendientes)
+              </label>
+            </fieldset>
+          )}
 
           <label className="flex flex-col gap-1 text-sm">
             <span className="font-medium">Texto de la vacante</span>

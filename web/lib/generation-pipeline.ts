@@ -40,6 +40,14 @@ export interface GenerateApplicationInput {
   reuseSlug?: string;
   /** Reporta el paso actual (para UI no bloqueante -- ver web/lib/jobs.ts). */
   onProgress?: (stage: string) => void;
+  /**
+   * userId de la sesión (#17) -- `undefined` en modo local. La ruta que
+   * encola el job (`generate`/`regenerate`) lo resuelve ANTES de encolar
+   * (nunca dentro del closure del job, la sesión es de la request HTTP
+   * original) y lo pasa acá para que el pipeline use el `StorageAdapter`
+   * correcto en modo hosteado.
+   */
+  userId?: string;
 }
 
 export interface GenerateApplicationResult {
@@ -67,7 +75,7 @@ export class ApplicationGenerationError extends Error {
 export async function generateApplication(
   input: GenerateApplicationInput,
 ): Promise<GenerateApplicationResult> {
-  const adapter = getStorageAdapter();
+  const adapter = getStorageAdapter(input.userId);
   const profile = await adapter.getProfile();
   if (!profile) {
     throw new ApplicationGenerationError(

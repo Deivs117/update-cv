@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireSession } from "@/lib/auth/require-session";
 import { compileLatex, LatexCompileError } from "@/lib/latex/compile";
 import { countPdfPages, PageCountError } from "@/lib/latex/page-count";
 import { getStorageAdapter } from "@/lib/storage/get-storage-adapter";
@@ -9,8 +10,11 @@ import { getStorageAdapter } from "@/lib/storage/get-storage-adapter";
  * minuto (ej. acortar una línea para que quepa en una página).
  */
 export async function POST(request: Request, { params }: { params: Promise<{ slug: string }> }) {
+  const session = await requireSession();
+  if (!session.ok) return session.response;
+
   const { slug } = await params;
-  const adapter = getStorageAdapter();
+  const adapter = getStorageAdapter(session.userId);
 
   let dir: string;
   try {

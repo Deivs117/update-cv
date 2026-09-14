@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireSession } from "@/lib/auth/require-session";
 import type { ClaudeMode } from "@/lib/claude/get-connector";
 import { generateApplication, mapGenerationError } from "@/lib/generation-pipeline";
 import { startJob } from "@/lib/jobs";
@@ -14,9 +15,12 @@ import { getStorageAdapter } from "@/lib/storage/get-storage-adapter";
  * el cliente hace polling a GET /api/jobs/[jobId].
  */
 export async function POST(request: Request, { params }: { params: Promise<{ slug: string }> }) {
+  const session = await requireSession();
+  if (!session.ok) return session.response;
+
   const { slug } = await params;
 
-  const record = await getStorageAdapter().getApplication(slug);
+  const record = await getStorageAdapter(session.userId).getApplication(slug);
   if (!record) {
     return NextResponse.json(
       { error: `No se encontró la aplicación "${slug}".` },
@@ -48,6 +52,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
         },
         claudeMode,
         reuseSlug: slug,
+        userId: session.userId,
         onProgress: setStage,
       }),
     mapGenerationError,
