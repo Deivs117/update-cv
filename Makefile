@@ -1,4 +1,4 @@
-.PHONY: help install dev build start lint typecheck test check extract-profile test-latex agent-watch db-generate db-migrate db-push db-studio
+.PHONY: help install dev build start lint typecheck test check extract-profile migrate-local-data backfill-cv-tex-metadata test-latex agent-watch db-generate db-migrate db-push db-studio
 
 # Deteccion de SO
 ifeq ($(OS),Windows_NT)
@@ -30,6 +30,8 @@ help:
 	@echo "  make extract-profile - Extraer un borrador de perfil desde data/raw/ (PDF/imagenes)"
 	@echo "  make migrate-local-data EMAIL=... [DRY_RUN=1]"
 	@echo "                                              - Subir profile.json y apps/ a una cuenta hosteada (issue #12)"
+	@echo "  make backfill-cv-tex-metadata EMAIL=... [DRY_RUN=1]"
+	@echo "                                              - Rellenar cvTex/coverLetterTex/coverLetterText/metadata en aplicaciones ya migradas (issue #92)"
 	@echo "  make test-latex      - Probar el pipeline de render + compilacion LaTeX"
 	@echo "  make agent-watch     - Vigilar .claude-tasks/ y resolver tareas del modo Agente"
 	@echo "  make db-generate     - Generar una migracion SQL desde lib/db/schema.ts (sin DB real)"
@@ -94,6 +96,14 @@ ifdef DRY_RUN
 	cd $(WEB_DIR) && npm run migrate-local-data -- --email $(EMAIL) --dry-run
 else
 	cd $(WEB_DIR) && npm run migrate-local-data -- --email $(EMAIL)
+endif
+
+backfill-cv-tex-metadata:
+	@echo "Rellenando cvTex/coverLetterTex/coverLetterText/metadata para $(EMAIL) (issue #92)..."
+ifdef DRY_RUN
+	cd $(WEB_DIR) && npm run backfill-cv-tex-metadata -- --email $(EMAIL) --dry-run
+else
+	cd $(WEB_DIR) && npm run backfill-cv-tex-metadata -- --email $(EMAIL)
 endif
 
 test-latex:
