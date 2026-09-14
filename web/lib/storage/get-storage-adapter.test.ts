@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import { FilesystemStorageAdapter } from "@/lib/storage/filesystem-storage-adapter";
 import { getStorageAdapter, resolveStorageMode } from "@/lib/storage/get-storage-adapter";
+import { SupabaseStorageAdapter } from "@/lib/storage/supabase-storage-adapter";
 import { StorageAdapterError } from "@/lib/storage/storage-adapter.interface";
 
 const ORIGINAL_ENV = { ...process.env };
@@ -35,24 +36,33 @@ describe("resolveStorageMode", () => {
 });
 
 describe("getStorageAdapter", () => {
-  // Un solo test para toda la secuencia: getStorageAdapter() cachea el
-  // adaptador en una variable de módulo, así que el orden importa --
-  // STORAGE_MODE=hosted debe probarse primero, antes de que cualquier
-  // llamada exitosa en modo local deje cacheada la instancia para el resto
-  // del proceso.
-  it("hosted lanza (sin adaptador todavía, #14) y no cachea nada; local sí devuelve y cachea FilesystemStorageAdapter", () => {
+  it("modo hosteado sin userId lanza StorageAdapterError (nunca un adaptador sin dueño)", () => {
     process.env.STORAGE_MODE = "hosted";
     expect(() => getStorageAdapter()).toThrow(StorageAdapterError);
-    expect(() => getStorageAdapter()).toThrow(/#14/);
+    expect(() => getStorageAdapter()).toThrow(/userId/);
+  });
 
+  it("modo hosteado con userId devuelve una instancia nueva de SupabaseStorageAdapter cada vez (nunca cacheada)", () => {
+    process.env.STORAGE_MODE = "hosted";
+    const first = getStorageAdapter("user-1");
+    const second = getStorageAdapter("user-1");
+    expect(first).toBeInstanceOf(SupabaseStorageAdapter);
+    expect(second).toBeInstanceOf(SupabaseStorageAdapter);
+    expect(second).not.toBe(first); // distinto usuario en teoría, o el mismo -- nunca se cachea.
+  });
+
+  // Un solo test para toda la secuencia en modo local: getStorageAdapter()
+  // cachea el FilesystemStorageAdapter en una variable de módulo, así que
+  // el orden importa dentro de este bloque.
+  it("modo local devuelve y cachea un único FilesystemStorageAdapter, ignorando userId", () => {
     process.env.STORAGE_MODE = "local";
     const first = getStorageAdapter();
     expect(first).toBeInstanceOf(FilesystemStorageAdapter);
 
-    // Segunda llamada (incluso sin STORAGE_MODE) devuelve la MISMA
-    // instancia cacheada, no una nueva.
+    // Segunda llamada (incluso sin STORAGE_MODE, incluso con un userId)
+    // devuelve la MISMA instancia cacheada, no una nueva.
     delete process.env.STORAGE_MODE;
-    const second = getStorageAdapter();
+    const second = getStorageAdapter("algún-user-id-ignorado");
     expect(second).toBe(first);
   });
 });
