@@ -3,7 +3,8 @@ import { requireSession } from "@/lib/auth/require-session";
 import type { ClaudeMode } from "@/lib/claude/get-connector";
 import { generateApplication, mapGenerationError } from "@/lib/generation-pipeline";
 import { startJob } from "@/lib/jobs";
-import { getStorageAdapter } from "@/lib/storage/get-storage-adapter";
+import { enqueueHostedJob } from "@/lib/jobs/hosted-jobs";
+import { getStorageAdapter, resolveStorageMode } from "@/lib/storage/get-storage-adapter";
 
 /**
  * Regenera una aplicación existente (Fase 7): re-corre todo el pipeline
@@ -38,25 +39,31 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
     claudeMode = metadata.claudeMode;
   }
 
-  const jobId = startJob(
-    (setStage) =>
-      generateApplication({
-        jobDescription,
-        company: metadata.company,
-        role: metadata.role,
-        language: metadata.language,
-        templateVariant: metadata.templateVariant,
-        coverLetter: {
-          enabled: metadata.coverLetter !== "none",
-          format: metadata.coverLetter === "text" ? "text" : "pdf",
-        },
-        claudeMode,
-        reuseSlug: slug,
-        userId: session.userId,
-        onProgress: setStage,
-      }),
-    mapGenerationError,
-  );
+  const generateInput = {
+    jobDescription,
+    company: metadata.company,
+    role: metadata.role,
+    language: metadata.language,
+    templateVariant: metadata.templateVariant,
+    coverLetter: {
+      enabled: metadata.coverLetter !== "none",
+      format: (metadata.coverLetter === "text" ? "text" : "pdf") as "text" | "pdf",
+    },
+    claudeMode,
+    reuseSlug: slug,
+  };
+
+  // En modo hosteado, un Vercel Function no sobrevive después de responder
+  // -- el trabajo se publica a QStash (#15) en vez de correr en un closure
+  // "fire and forget" como en modo local (ver web/lib/jobs.ts).
+  const jobId =
+    resolveStorageMode() === "hosted"
+      ? await enqueueHostedJob("/api/internal/jobs/generate", generateInput, session.userId!)
+      : startJob(
+          (setStage) =>
+            generateApplication({ ...generateInput, userId: session.userId, onProgress: setStage }),
+          mapGenerationError,
+        );
 
   return NextResponse.json({ jobId }, { status: 202 });
 }
