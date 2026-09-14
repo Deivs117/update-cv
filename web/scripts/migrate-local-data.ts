@@ -16,7 +16,6 @@
  * cuentas, solo asocia los datos locales a una cuenta ya existente.
  */
 import { config as loadEnv } from "dotenv";
-import { createHash } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { getDb } from "@/lib/db/client";
@@ -24,6 +23,7 @@ import { applications, profiles } from "@/lib/db/schema";
 import { readProfile } from "@/lib/profile-io";
 import { uploadGeneratedPdf } from "@/lib/storage/supabase-storage";
 import { APPS_DIR, type ApplicationMetadata } from "@/lib/apps-io";
+import { deriveId } from "./lib/deterministic-id";
 
 const REPO_ROOT = path.resolve(__dirname, "..", "..");
 loadEnv({ path: path.join(REPO_ROOT, ".env") });
@@ -39,12 +39,6 @@ function parseArgs(): { email: string; dryRun: boolean } {
     process.exit(1);
   }
   return { email, dryRun: args.includes("--dry-run") };
-}
-
-/** Deriva un id determinístico (formato UUID) de un slug -- reintentar el script no duplica filas. */
-function deriveId(seed: string): string {
-  const hex = createHash("sha256").update(seed).digest("hex").slice(0, 32);
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
 }
 
 /** Busca el usuario de Supabase Auth por email vía la Admin API (no crea cuentas). */
@@ -142,16 +136,33 @@ async function migrateApplications(userId: string, dryRun: boolean): Promise<voi
     }
 
     let coverLetterPdfPath: string | null = null;
+    let coverLetterTex: string | null = null;
+    let coverLetterText: string | null = null;
     if (metadata.coverLetter === "pdf") {
       const clLocalPath = path.join(dir, "cover_letter.pdf");
       if (await fileExists(clLocalPath)) {
         coverLetterPdfPath = `${userId}/${appId}/cover_letter.pdf`;
         await uploadGeneratedPdf(coverLetterPdfPath, await readFile(clLocalPath));
       }
+      coverLetterTex = await readFile(path.join(dir, "cover_letter.tex"), "utf-8").catch(() => null);
+    } else if (metadata.coverLetter === "text") {
+      coverLetterText = await readFile(path.join(dir, "cover_letter.txt"), "utf-8").catch(() => null);
     }
-    // coverLetter === "text": el contenido vive solo en cover_letter.txt local;
-    // el schema de applications (#8) no tiene una columna para texto plano de
-    // carta -- se omite a propósito, no es un dato crítico como el CV mismo.
+
+    const cvTex = await readFile(path.join(dir, "cv.tex"), "utf-8").catch(() => null);
+
+    // Resto de metadata.json sin columna propia (mismo criterio ya usado en
+    // SupabaseStorageAdapter, ver lib/storage/supabase-storage-adapter.ts).
+    const {
+      claudeMode,
+      claudeModel,
+      templateVariant,
+      pages,
+      recommendedMaxPages,
+      forcedTrim,
+      coverLetter,
+    } = metadata;
+    const metadataExtra = { claudeMode, claudeModel, templateVariant, pages, recommendedMaxPages, forcedTrim, coverLetter };
 
     await db!
       .insert(applications)
@@ -166,11 +177,26 @@ async function migrateApplications(userId: string, dryRun: boolean): Promise<voi
         tailoredContent: null,
         cvPdfPath,
         coverLetterPdfPath,
+        cvTex,
+        coverLetterTex,
+        coverLetterText,
+        metadata: metadataExtra,
         createdAt: new Date(metadata.createdAt),
       })
       .onConflictDoUpdate({
         target: applications.id,
-        set: { company, role, language: metadata.language, jobDescription, cvPdfPath, coverLetterPdfPath },
+        set: {
+          company,
+          role,
+          language: metadata.language,
+          jobDescription,
+          cvPdfPath,
+          coverLetterPdfPath,
+          cvTex,
+          coverLetterTex,
+          coverLetterText,
+          metadata: metadataExtra,
+        },
       });
     console.log(`    -> guardada (cv: ${cvPdfPath ? "sí" : "no"}, carta: ${coverLetterPdfPath ? "sí" : "no"}).`);
   }
