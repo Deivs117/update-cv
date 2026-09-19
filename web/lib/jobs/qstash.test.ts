@@ -62,6 +62,31 @@ describe("publishInternalJob", () => {
   });
 });
 
+describe("publishInternalJob: URL base y bypass", () => {
+  it("sin APP_BASE_URL usa VERCEL_URL del deployment", async () => {
+    delete process.env.APP_BASE_URL;
+    process.env.VERCEL_URL = "update-cv-abc.vercel.app";
+    await publishInternalJob("/api/internal/jobs/analyze", {});
+    expect(mockPublishJSON).toHaveBeenCalledWith(
+      expect.objectContaining({ url: "https://update-cv-abc.vercel.app/api/internal/jobs/analyze" }),
+    );
+  });
+
+  it("sin APP_BASE_URL ni VERCEL_URL, lanza un error claro", async () => {
+    delete process.env.APP_BASE_URL;
+    delete process.env.VERCEL_URL;
+    await expect(publishInternalJob("/x", {})).rejects.toThrow(/APP_BASE_URL/);
+  });
+
+  it("con VERCEL_AUTOMATION_BYPASS_SECRET reenvía el header de bypass", async () => {
+    process.env.VERCEL_AUTOMATION_BYPASS_SECRET = "secreto-test";
+    await publishInternalJob("/x", {});
+    expect(mockPublishJSON).toHaveBeenCalledWith(
+      expect.objectContaining({ headers: { "x-vercel-protection-bypass": "secreto-test" } }),
+    );
+  });
+});
+
 function fakeRequest(body: string, signature: string | null): Request {
   const headers = new Headers();
   if (signature !== null) headers.set("upstash-signature", signature);

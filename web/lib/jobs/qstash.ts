@@ -40,8 +40,25 @@ function getQStashClient(): Client {
  * de forma síncrona acá.
  */
 export async function publishInternalJob(path: string, body: unknown): Promise<void> {
-  const baseUrl = getEnv("APP_BASE_URL").replace(/\/$/, "");
-  await getQStashClient().publishJSON({ url: `${baseUrl}${path}`, body });
+  const baseUrl = resolveBaseUrl();
+  // En Preview con Deployment Protection, QStash necesita el secreto de bypass
+  // para llegar a los endpoints internos (QStash reenvía los headers dados).
+  const bypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+  await getQStashClient().publishJSON({
+    url: `${baseUrl}${path}`,
+    body,
+    ...(bypass ? { headers: { "x-vercel-protection-bypass": bypass } } : {}),
+  });
+}
+
+// APP_BASE_URL manda (dominio estable); si falta, en Vercel se usa la URL del
+// propio deployment, que en Preview cambia en cada push.
+function resolveBaseUrl(): string {
+  const explicit = process.env.APP_BASE_URL;
+  if (explicit) return explicit.replace(/\/$/, "");
+  const vercelUrl = process.env.VERCEL_URL;
+  if (vercelUrl) return `https://${vercelUrl}`;
+  return getEnv("APP_BASE_URL");
 }
 
 export type QstashVerification = { ok: true; body: unknown } | { ok: false };
