@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "functions": {
+    "app/api/internal/jobs/*/route.ts": { "maxDuration": 300 },
+    "app/api/apps/[[]slug]/recompile/route.ts": { "maxDuration": 300 },
+    "app/api/apps/[[]slug]/regenerate/route.ts": { "maxDuration": 300 }
+  }
+}
