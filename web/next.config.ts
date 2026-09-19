@@ -8,6 +8,7 @@ import type { NextConfig } from "next";
 loadEnv({ path: path.resolve(__dirname, "..", ".env") });
 
 const REPO_ROOT = path.resolve(__dirname, "..");
+const tectonicPack = path.join(REPO_ROOT, "web/vendor/tectonic-linux-x64.pack");
 
 const nextConfig: NextConfig = {
   // Las plantillas LaTeX viven en templates/ (fuera de web/) y se leen con una
@@ -18,6 +19,12 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: REPO_ROOT,
   outputFileTracingIncludes: {
     "/api/**/*": [path.join(REPO_ROOT, "templates/latex/**/*")],
+    // Paquete de tectonic (#101, ~10 MB): solo en las funciones que compilan,
+    // porque cada deployment cuenta contra Functions Storage.
+    "/api/internal/jobs/*": [tectonicPack],
+    "/api/apps/*/recompile": [tectonicPack],
+    "/api/apps/*/regenerate": [tectonicPack],
+    "/api/nueva-aplicacion/generate": [tectonicPack],
   },
 };
 

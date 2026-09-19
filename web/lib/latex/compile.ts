@@ -5,6 +5,7 @@
 import { spawn } from "node:child_process";
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
+import { getTectonicRuntime } from "./tectonic-runtime";
 
 export class LatexCompileError extends Error {
   constructor(
@@ -27,9 +28,10 @@ function runProcess(
   command: string,
   args: string[],
   cwd: string,
+  env?: Record<string, string>,
 ): Promise<{ code: number | null; output: string }> {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { cwd });
+    const child = spawn(command, args, { cwd, env: env ? { ...process.env, ...env } : process.env });
     let output = "";
     child.stdout.on("data", (chunk) => (output += chunk.toString()));
     child.stderr.on("data", (chunk) => (output += chunk.toString()));
@@ -58,7 +60,14 @@ export async function compileLatex(
   let result: { code: number | null; output: string };
   try {
     if (engine === "tectonic") {
-      result = await runProcess("tectonic", [texFileName], cwd);
+      if (process.env.STORAGE_MODE?.trim().toLowerCase() === "hosted") {
+        const rt = await getTectonicRuntime();
+        result = await runProcess(rt.binary, ["--only-cached", texFileName], cwd, {
+          XDG_CACHE_HOME: rt.cacheHome,
+        });
+      } else {
+        result = await runProcess("tectonic", [texFileName], cwd);
+      }
     } else {
       result = await runProcess(
         "pdflatex",

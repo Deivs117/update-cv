@@ -17,6 +17,7 @@
     "backfill-cv-tex-metadata": "tsx scripts/backfill-cv-tex-metadata.ts",
     "baseline-migrations": "tsx scripts/baseline-migrations.ts",
     "test-latex": "tsx scripts/test-latex-pipeline.ts",
+    "pack-tectonic": "tsx scripts/pack-tectonic.ts",
     "agent:watch": "tsx scripts/agent-watch.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
