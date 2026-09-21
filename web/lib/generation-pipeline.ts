@@ -212,5 +212,6 @@ export function mapGenerationError(err: unknown): { message: string; status: num
   ) {
     return { message: err.message, status: 502 };
   }
+  console.error("[generation] error inesperado:", err);
   return { message: "Error inesperado generando el CV.", status: 500 };
 }
