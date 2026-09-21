@@ -4,6 +4,7 @@
  * (aplicación nueva) como POST /api/apps/[slug]/regenerate (Fase 7: regenerar
  * una aplicación existente reusando su misma carpeta).
  */
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { getConnector, resolveClaudeMode, type ClaudeMode } from "@/lib/claude/get-connector";
 import { ClaudeConnectorError, type JobAnalysis, type Language } from "@/lib/claude/connector.interface";
@@ -135,6 +136,9 @@ export async function generateApplication(
   await adapter.saveApplication(slug, { cvTex: tex });
   onProgress("Compilando el PDF del CV...");
   const { pdfPath } = await compileLatex("cv.tex", dir);
+  // En modo hosteado el PDF vive en /tmp: sin subirlo al bucket se pierde al
+  // terminar la invocación (en modo local es un no-op).
+  await adapter.saveApplicationPdf(slug, "cv", await readFile(pdfPath));
   const pages = await countPdfPages(pdfPath);
 
   // Módulo 4 (sección 10): carta de presentación opcional, reusa el mismo
@@ -164,7 +168,8 @@ export async function generateApplication(
       });
       await adapter.saveApplication(slug, { coverLetterTex: letterTex });
       onProgress("Compilando el PDF de la carta de presentación...");
-      await compileLatex("cover_letter.tex", dir);
+      const { pdfPath: letterPdfPath } = await compileLatex("cover_letter.tex", dir);
+      await adapter.saveApplicationPdf(slug, "cover_letter", await readFile(letterPdfPath));
       coverLetterUrl = `/api/apps/${slug}/cover_letter.pdf`;
     }
   }
@@ -212,5 +217,6 @@ export function mapGenerationError(err: unknown): { message: string; status: num
   ) {
     return { message: err.message, status: 502 };
   }
+  console.error("[generation] error inesperado:", err);
   return { message: "Error inesperado generando el CV.", status: 500 };
 }
