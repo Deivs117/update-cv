@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth/require-session";
 import { compileLatex, LatexCompileError } from "@/lib/latex/compile";
@@ -41,6 +42,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
   try {
     await adapter.saveApplication(slug, file === "cv" ? { cvTex: tex } : { coverLetterTex: tex });
     const { pdfPath } = await compileLatex(texFileName, dir);
+    await adapter.saveApplicationPdf(slug, file, await readFile(pdfPath));
     const pages = await countPdfPages(pdfPath);
 
     // Solo el CV lleva conteo de páginas en metadata.json (la carta no tiene
