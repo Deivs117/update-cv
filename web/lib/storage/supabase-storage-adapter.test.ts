@@ -43,7 +43,8 @@ vi.mock("@/lib/storage/supabase-storage", () => ({
 }));
 
 const mockMkdtemp = vi.fn();
-vi.mock("node:fs/promises", () => ({ mkdtemp: mockMkdtemp }));
+const mockWriteFile = vi.fn().mockResolvedValue(undefined);
+vi.mock("node:fs/promises", () => ({ mkdtemp: mockMkdtemp, writeFile: mockWriteFile }));
 
 const { SupabaseStorageAdapter } = await import("@/lib/storage/supabase-storage-adapter");
 
@@ -65,6 +66,7 @@ beforeEach(() => {
   mockUploadGeneratedPdf.mockClear();
   mockGetSignedPdfUrl.mockClear();
   mockMkdtemp.mockReset();
+  mockWriteFile.mockClear();
 });
 
 afterEach(() => {
@@ -183,6 +185,21 @@ describe("SupabaseStorageAdapter -- aplicaciones", () => {
       metadata: { company: "Acme", role: "SRE", language: "en", pages: 3, createdAt: "2026-01-01T00:00:00Z" },
     });
     expect(mockUpdate).toHaveBeenCalledTimes(1);
+  });
+
+  it("saveApplication: cvTex y coverLetterTex se escriben como cv.tex / cover_letter.tex en el directorio temporal", async () => {
+    mockMkdtemp.mockResolvedValue("/tmp/update-cv-xyz");
+    const adapter = new SupabaseStorageAdapter("user-1");
+    await adapter.saveApplication("app-1", { cvTex: "\\documentclass{x}", coverLetterTex: "carta" });
+    expect(mockWriteFile).toHaveBeenCalledWith("/tmp/update-cv-xyz/cv.tex", "\\documentclass{x}", "utf-8");
+    expect(mockWriteFile).toHaveBeenCalledWith("/tmp/update-cv-xyz/cover_letter.tex", "carta", "utf-8");
+  });
+
+  it("saveApplication: un patch sin .tex no crea el directorio temporal", async () => {
+    const adapter = new SupabaseStorageAdapter("user-1");
+    await adapter.saveApplication("app-1", { metadata: { pages: 1 } });
+    expect(mockWriteFile).not.toHaveBeenCalled();
+    expect(mockMkdtemp).not.toHaveBeenCalled();
   });
 
   it("getApplicationDir: cachea el mismo directorio para el mismo slug dentro de la instancia", async () => {

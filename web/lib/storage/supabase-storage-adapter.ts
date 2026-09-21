@@ -10,7 +10,7 @@
  * clase filtra EXPLÍCITAMENTE por `userId` en el WHERE, sin excepción --
  * ver la discusión de diseño del issue #14.
  */
-import { mkdtemp } from "node:fs/promises";
+import { mkdtemp, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { and, desc, eq, sql } from "drizzle-orm";
@@ -183,6 +183,16 @@ export class SupabaseStorageAdapter implements StorageAdapter {
   }
 
   async saveApplication(slug: string, patch: ApplicationPatch): Promise<void> {
+    // compileLatex lee cv.tex / cover_letter.tex desde getApplicationDir(slug);
+    // en modo local saveApplication ya los escribe ahí, así que acá también.
+    if (patch.cvTex !== undefined || patch.coverLetterTex !== undefined) {
+      const dir = await this.getApplicationDir(slug);
+      if (patch.cvTex !== undefined) await writeFile(path.join(dir, "cv.tex"), patch.cvTex, "utf-8");
+      if (patch.coverLetterTex !== undefined) {
+        await writeFile(path.join(dir, "cover_letter.tex"), patch.coverLetterTex, "utf-8");
+      }
+    }
+
     const updates: Partial<typeof applications.$inferInsert> = {};
 
     if (patch.jobDescription !== undefined) updates.jobDescription = patch.jobDescription;
